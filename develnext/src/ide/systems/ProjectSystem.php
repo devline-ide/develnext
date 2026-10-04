@@ -412,7 +412,7 @@ class ProjectSystem
 
         foreach (FileSystem::getOpened() as $hash => $info) {
             //if ($project && $project->isContainsFile($info['file'])) {
-            FileSystem::close($info['file'], $saveAll && $projectAvailable);
+            FileSystem::close($info['file'], true, $saveAll && $projectAvailable);
             //}
         }
 

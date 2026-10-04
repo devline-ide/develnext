@@ -694,7 +694,7 @@ class GuiFrameworkProjectBehaviour extends AbstractProjectBehaviour
             $project = $this->project;
 
             uiLater(function () use ($project) {
-                if (Ide::get()->getOpenedProject() == $project) {
+                if (Ide::get()->getOpenedProject() === $project) {
                     Logger::warn("Opened project directory was removed: {$project->getRootDir()}");
                     ProjectSystem::closeWithWelcome(false);
                     Notifications::warning('Проект закрыт', 'Папка открытого проекта была удалена или перемещена.');

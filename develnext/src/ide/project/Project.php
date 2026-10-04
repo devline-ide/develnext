@@ -211,8 +211,11 @@ class Project
 
     public function doTick()
     {
-        $file = $this->getIdeFile("ide.lock");
-        FileUtils::putAsync($file, Time::millis());
+        Ide::async(function () {
+            if (fs::isDir($this->rootDir) && fs::isFile($this->getProjectFile())) {
+                FileUtils::put($this->getIdeFile("ide.lock"), Time::millis());
+            }
+        });
     }
 
     public function getProjectFile()
