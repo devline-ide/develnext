@@ -114,6 +114,7 @@ script\RobotScript
 script\ScoreScript
 script\storage\AbstractStorage
 script\storage\IniStorage
+script\storage\JsonStorage
 script\support\NodeHelper
 script\support\ScriptHelpers
 script\TimerScript
