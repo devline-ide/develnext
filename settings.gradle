@@ -5,7 +5,6 @@ include 'jphp-desktop-hotkey-ext',
         'dn-app-framework',
         'develnext';
 
-include 'develnext-doc';
 include 'develnext-lexer';
 include 'develnext-launcher';
 

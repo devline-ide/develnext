@@ -61,6 +61,10 @@ class NewProjectForm extends AbstractIdeForm
     {
         parent::init();
 
+        if (class_exists('devline\legacy\Storage')) {
+            \devline\legacy\NewProjectWizard::attach($this);
+        }
+
         $this->contextMenu = new ContextMenu();
 
         $this->contextMenu->addCommand(AbstractCommand::make('Удалить', 'icons/delete16.png', function () {
@@ -215,6 +219,10 @@ class NewProjectForm extends AbstractIdeForm
 
         if (!$regex->test($package)) {
             UXDialog::show(_('project.new.error.package.invalid') . "\n* " . _('project.new.error.package.invalid.description'), 'ERROR');
+            return;
+        }
+
+        if (class_exists('devline\legacy\Storage') && \devline\legacy\NewProjectWizard::create($this, $template, $path, $name, $package)) {
             return;
         }
 

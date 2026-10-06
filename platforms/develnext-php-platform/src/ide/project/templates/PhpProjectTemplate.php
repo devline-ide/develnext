@@ -66,6 +66,9 @@ class PhpProjectTemplate extends AbstractProjectTemplate
      */
     public function makeProject(Project $project)
     {
+        $project->setSrcDirectory('');
+        $project->setSrcGeneratedDirectory(null);
+
         /** @var PhpProjectBehaviour $php */
         $project->register(new JavaPlatformBehaviour());
         $php = $project->register(new PhpProjectBehaviour());

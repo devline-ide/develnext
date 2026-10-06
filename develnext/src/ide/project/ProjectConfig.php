@@ -68,7 +68,9 @@ class ProjectConfig
         $this->rootDir = $rootDir;
         $this->projectName = $projectName;
 
-        $this->configPath = $configPath = "$rootDir/$projectName.dnproject";
+        $this->configPath = $configPath = class_exists('devline\legacy\Storage')
+            ? \devline\legacy\Storage::configFile($rootDir, $projectName)
+            : "$rootDir/$projectName.dnproject";
 
         $this->reload();
         $this->update(true);
@@ -85,7 +87,7 @@ class ProjectConfig
 
         $name = $file->getName();
 
-        if (Str::endsWith($name, '.dnproject')) {
+        if (Str::endsWith($name, '.dnproject') || Str::endsWith($name, '.dlproject')) {
             $name = Str::sub($name, 0, Str::length($name) - 10);
         }
 
@@ -140,6 +142,9 @@ class ProjectConfig
             Logger::warn("Unable to trim project config, cannot rename tmp file to origin");
             $configFile->delete();
         }
+        if (class_exists('devline\legacy\Storage')) {
+            \devline\legacy\Storage::saveConfig($this->configPath);
+        }
     }
 
     public function reload()
@@ -161,7 +166,9 @@ class ProjectConfig
      */
     public function getConfigPath()
     {
-        return $this->configPath;
+        return class_exists('devline\legacy\Storage')
+            ? \devline\legacy\Storage::projectFile($this->rootDir, $this->projectName)
+            : $this->configPath;
     }
 
     /**

@@ -10,7 +10,6 @@ use ide\project\behaviours\BundleProjectBehaviour;
 use ide\project\behaviours\JavaPlatformBehaviour;
 use ide\project\behaviours\PhpProjectBehaviour;
 use ide\project\behaviours\RunBuildProjectBehaviour;
-use ide\project\behaviours\ShareProjectBehaviour;
 use ide\project\Project;
 use ide\systems\FileSystem;
 use ide\webplatform\editors\WebFormEditor;
@@ -65,7 +64,6 @@ class WebProjectTemplate extends AbstractProjectTemplate
         $web = $project->register(new WebProjectBehaviour());
 
         $project->register(new WebRunBuildProjectBehaviour());
-        $project->register(new ShareProjectBehaviour());
         $project->register(new BackupProjectBehaviour());
 
         $project->setIgnoreRules([

@@ -31,12 +31,13 @@ class IdeLogShowCommand extends AbstractCommand
         $dialog = new UXForm();
         $dialog->owner = Ide::get()->getMainForm();
         $dialog->modality = 'APPLICATION_MODAL';
-        $dialog->title = 'IDE Logging (ide.log)';
+        $dialog->title = 'IDE Logging (' . Ide::get()->getLogFile() . ')';
         $dialog->style = 'UTILITY';
 
         $dialog->size = [1000, 600];
 
         $textArea = new UXTextArea(FileUtils::get(Ide::get()->getLogFile()));
+        $textArea->editable = false;
         $textArea->font = new UXFont(12, 'Courier New');
         UXAnchorPane::setAnchor($textArea, 10);
 

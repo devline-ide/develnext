@@ -1,8 +1,6 @@
 <?php
 namespace ide;
 
-use ide\account\AccountManager;
-use ide\account\ServiceManager;
 use ide\bundle\AbstractBundle;
 use ide\editors\AbstractEditor;
 use ide\editors\value\ElementPropertyEditor;
@@ -120,16 +118,6 @@ class Ide extends Application
     protected $projectControlPanes = [];
 
     /**
-     * @var AccountManager
-     */
-    protected $accountManager = null;
-
-    /**
-     * @var ServiceManager
-     */
-    protected $serviceManager = null;
-
-    /**
      * @var IdeLibrary
      */
     protected $library;
@@ -225,6 +213,8 @@ class Ide extends Application
                                 . "\n\t-> " . _("error.at.line", $e->getLine()) . "\n\n" . $e->getTraceAsString());
 
 
+                            $pane->prefSize = [720, 320];
+                            $content->editable = false;
                             $content->padding = 10;
                             UXAnchorPane::setAnchor($content, 0);
                             $pane->add($content);
@@ -237,7 +227,6 @@ class Ide extends Application
                             }
                         });
 
-                        $this->sendError($e);
 
                         $notify->on('hide', function () use (&$showError) {
                             $showError = false;
@@ -270,20 +259,6 @@ class Ide extends Application
                     $handle();
                 }
 
-                $this->serviceManager = new ServiceManager();
-
-                $this->serviceManager->on('privateEnable', function () {
-                    $this->accountManager->updateAccount();
-                });
-
-                $this->serviceManager->on('privateDisable', function () {
-                    //Notifications::showAccountUnavailable();
-                });
-
-                $this->serviceManager->updateStatus();
-
-                $this->accountManager = new AccountManager();
-
                 $this->registerAll();
 
                 foreach ($this->extensions as $extension) {
@@ -308,7 +283,16 @@ class Ide extends Application
                 });
                 $timer->start();
 
-                $this->trigger('start', []);
+                $start = function () {
+                    $this->getMainForm()->opacity = 1;
+                    $this->trigger('start', []);
+                };
+
+                if ($splash = $this->getSplash()) {
+                    $splash->whenMainReady($start);
+                } else {
+                    $start();
+                }
             }
         );
     }
@@ -407,23 +391,6 @@ class Ide extends Application
     public function getLanguages()
     {
         return $this->languages;
-    }
-
-    /**
-     * @param \Exception|\Error $e
-     * @param string $context
-     */
-    public function sendError($e, $context = 'global')
-    {
-        if (Ide::service()->canPrivate() && Ide::accountManager()->isAuthorized()) {
-            try {
-                Ide::service()->ide()->sendErrorAsync($e, function () {
-
-                });
-            } catch (\Exception $e) {
-                echo "Unable to send error, exception = {$e->getMessage()}\n";
-            }
-        }
     }
 
     public function makeEnvironment()
@@ -1347,14 +1314,6 @@ class Ide extends Application
     }
 
     /**
-     * @return AccountManager
-     */
-    public function getAccountManager()
-    {
-        return $this->accountManager;
-    }
-
-    /**
      * @param string|AbstractProjectSupport $support
      * @throws IdeException
      */
@@ -1427,6 +1386,10 @@ class Ide extends Application
             $this->registerExtension($extension);
         }
 
+        if (class_exists('devline\\legacy\\ModernBehaviours')) {
+            \devline\legacy\ModernBehaviours::register();
+        }
+
         $valueEditors = $this->getInternalList('.dn/propertyValueEditors');
         foreach ($valueEditors as $valueEditor) {
             $valueEditor = new $valueEditor();
@@ -1447,6 +1410,9 @@ class Ide extends Application
         $mainCommands = $this->getInternalList('.dn/mainCommands');
         $commands = [];
         foreach ($mainCommands as $commandClass) {
+            if ($commandClass === 'ide\\commands\\IdeSandboxShowCommand' && !$this->isDevelopment()) {
+                continue;
+            }
             /** @var AbstractCommand $command */
             $command = new $commandClass();
 
@@ -1567,22 +1533,6 @@ class Ide extends Application
     public static function project()
     {
         return self::get()->getOpenedProject();
-    }
-
-    /**
-     * @return AccountManager
-     */
-    public static function accountManager()
-    {
-        return Ide::get()->getAccountManager();
-    }
-
-    /**
-     * @return ServiceManager
-     */
-    public static function service()
-    {
-        return Ide::get()->serviceManager;
     }
 
     /**
@@ -1779,6 +1729,11 @@ class Ide extends Application
      */
     public function startNew(array $args = [])
     {
+        if (class_exists('devline\\legacy\\ProjectOwnership')) {
+            \devline\legacy\ProjectOwnership::startStudio($args);
+            Ide::toast('Запуск DevelNext, подождите ...');
+            return;
+        }
         $javaRuntimePath = $this->getJavaRuntimePath();
 
         $javaBin = 'java';

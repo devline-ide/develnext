@@ -261,13 +261,22 @@ class FormEditor extends AbstractModuleEditor
 
     public function __construct($file, AbstractFormDumper $dumper)
     {
-        parent::__construct($file);
+        $documentFile = $file;
+        if (class_exists('devline\legacy\Storage')) {
+            $documentFile = \devline\legacy\Storage::document($file);
+            $file = \devline\legacy\Storage::controller($file);
+        }
+        parent::__construct($documentFile);
 
         $this->config = new Configuration();
         $this->formDumper = $dumper;
 
         $fxmlFile = fs::pathNoExt($file) . ".fxml";
         $confFile = fs::pathNoExt($file) . ".conf";
+        if (class_exists('devline\legacy\Storage')) {
+            $fxmlFile = \devline\legacy\Storage::sidecar($file, '.fxml');
+            $confFile = \devline\legacy\Storage::sidecar($file, '.conf');
+        }
 
         if (fs::isFile($fxmlFile)) {
             $this->factory = new IdeFormFactory(fs::nameNoExt($file), $fxmlFile);
@@ -281,10 +290,14 @@ class FormEditor extends AbstractModuleEditor
 
         $this->initCodeEditor($this->codeFile);
 
-        $this->actionEditor = new ActionEditor($file . '.axml');
+        $actionFile = class_exists('devline\legacy\Storage')
+            ? \devline\legacy\Storage::sidecar($file, '.php.axml') : $file . '.axml';
+        $this->actionEditor = new ActionEditor($actionFile);
         $this->actionEditor->setFormEditor($this);
 
-        $this->behaviourManager = new IdeBehaviourManager(fs::pathNoExt($file) . '.behaviour', function ($targetId, $has = false) {
+        $behaviourFile = class_exists('devline\legacy\Storage')
+            ? \devline\legacy\Storage::sidecar($file, '.behaviour') : fs::pathNoExt($file) . '.behaviour';
+        $this->behaviourManager = new IdeBehaviourManager($behaviourFile, function ($targetId, $has = false) {
             $node = $targetId ? $this->layout->lookup("#$targetId") : $this;
 
             if (!$node) {
@@ -585,6 +598,9 @@ class FormEditor extends AbstractModuleEditor
     public function saveFormFile()
     {
         $this->formDumper->save($this);
+        if (class_exists('devline\legacy\Storage')) {
+            \devline\legacy\Storage::saveForm($this->codeFile);
+        }
 
         if ($this->factory) {
             $this->factory->reload();

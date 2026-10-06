@@ -47,6 +47,9 @@ abstract class AbstractFormFormat extends AbstractFormat
 
     public function isValid($file)
     {
+        if (class_exists('devline\legacy\Storage') && \devline\legacy\Storage::isForm($file)) {
+            return fs::ext($file) == 'dlui';
+        }
         $ext = fs::ext($file);
 
         if ($ext != 'php') {

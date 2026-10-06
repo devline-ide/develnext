@@ -748,6 +748,13 @@ class GuiFrameworkProjectBehaviour extends AbstractProjectBehaviour
             $editor->addStylesheet($filePath);
         }
 
+        if (class_exists('devline\legacy\Storage') && method_exists('devline\legacy\Storage', 'managesStyles') && \devline\legacy\Storage::managesStyles($this->project->getRootDir())) {
+            foreach (\devline\legacy\Storage::stylesheets($editor->getFile()) as $stylesheet) {
+                $editor->addStylesheet($stylesheet);
+            }
+            return;
+        }
+
         /*foreach ($stylesheets as $stylesheet) {
             if (str::contains($stylesheet, '/skin/')) {
                 $editor->removeStylesheet($stylesheet);
@@ -879,12 +886,13 @@ class GuiFrameworkProjectBehaviour extends AbstractProjectBehaviour
             'extensions' => ['css'], 'excludeDirs' => true
         ], 1);
 
-        foreach ($skinFiles as $skinFile) {
+        $managedStyles = class_exists('devline\legacy\Storage') && method_exists('devline\legacy\Storage', 'managesStyles') && \devline\legacy\Storage::managesStyles($this->project->getRootDir());
+        foreach ($managedStyles ? [] : $skinFiles as $skinFile) {
             $name = str::replace($skinFile->getName(), ' ', '%20');
             $code .= "\n\$app->addStyle('/.theme/skin/{$name}');";
         }
 
-        $code .= "\n\$app->addStyle('/.theme/style.fx.css');";
+        if (!$managedStyles) $code .= "\n\$app->addStyle('/.theme/style.fx.css');";
 
         $template->setInnerCode($code);
 
@@ -1142,9 +1150,12 @@ class GuiFrameworkProjectBehaviour extends AbstractProjectBehaviour
      */
     public function getFormEditor($name)
     {
-        return $this->hasForm($name) ?
-            FileSystem::fetchEditor($this->project->getFile("src/{$this->project->getPackageName()}/forms/$name.php"), true)
-            : null;
+        if (!$this->hasForm($name)) return null;
+        $file = $this->project->getFile("src/{$this->project->getPackageName()}/forms/$name.php");
+        if (class_exists('devline\legacy\Storage')) {
+            $file = \devline\legacy\Storage::document($file);
+        }
+        return FileSystem::fetchEditor($file, true);
     }
 
         public function createForm($name, $namespace = null)

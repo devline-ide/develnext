@@ -34,6 +34,8 @@ use timer\AccurateTimer;
  */
 class ProjectSystem
 {
+    private static $projectLease;
+
     protected static function clear()
     {
         //WatcherSystem::clear();
@@ -219,6 +221,17 @@ class ProjectSystem
             $project->setPackageName($package);
 
             $template->makeProject($project);
+            if (class_exists('devline\\legacy\\ProjectOwnership')) {
+                $directory = File::of($project->getRootDir());
+                if (!$directory->isDirectory() && !$directory->mkdirs()) {
+                    throw new IOException('Unable to create project directory');
+                }
+                static::$projectLease = \devline\legacy\ProjectOwnership::tryAcquire($project->getRootDir());
+                if (!static::$projectLease) {
+                    UXDialog::show('Проект уже открыт в другой студии.', 'ERROR');
+                    return;
+                }
+            }
             Ide::get()->setOpenedProject($project);
 
             $project->create();
@@ -246,13 +259,37 @@ class ProjectSystem
     static function open($fileName, $showDialogAlreadyOpened = true, $showMigrationDialog = true, $showWindowKind = false)
     {
         Logger::info("Start opening project: $fileName");
+        $lease = null;
 
         try {
             Ide::get()->getMainForm()->showPreloader('Открытие проекта ...');
 
             $file = File::of($fileName);
+            if (class_exists('devline\\legacy\\Storage')) {
+                $warning = \devline\legacy\Storage::compatibilityWarning($fileName);
+                if ($warning) {
+                    $message = new MessageBoxForm("Проект содержит возможности, которые не поддерживаются в этой legacy IDE:\n$warning\n\nПри открытии будет создана копия рядом с проектом с пометкой «открыт в легаси».", ['Отмена', 'Открыть']);
+                    $message->showDialog();
+                    if ($message->getResultIndex() !== 1) {
+                        Ide::get()->getMainForm()->hidePreloader();
+                        return null;
+                    }
+                    $fileName = \devline\legacy\Storage::legacyCopy($fileName);
+                    $file = File::of($fileName);
+                }
+            }
 
             try {
+                if (class_exists('devline\\legacy\\ProjectOwnership')) {
+                    $lease = \devline\legacy\ProjectOwnership::tryAcquire($file->getParent());
+                    if (!$lease) {
+                        if ($showDialogAlreadyOpened) {
+                            UXDialog::show('Проект уже открыт в другой студии.', 'ERROR');
+                        }
+                        Ide::get()->getMainForm()->hidePreloader();
+                        return null;
+                    }
+                }
                 $project = new Project($file->getParent(), fs::nameNoExt($file));
 
                 if ($project->isOpenedInOtherIde()) {
@@ -275,6 +312,10 @@ class ProjectSystem
 
                     switch ($msg->getResultIndex()) {
                         case 1:
+                            if ($lease) {
+                                \devline\legacy\ProjectOwnership::release($lease);
+                                $lease = null;
+                            }
                             Ide::get()->startNew(["$fileName"]);
                             // next... ->
                         case 2:
@@ -327,6 +368,8 @@ class ProjectSystem
                 }
 
                 Ide::get()->setOpenedProject($project);
+                static::$projectLease = $lease;
+                $lease = null;
 
                 $project->load();
                 $project->recover();
@@ -354,6 +397,10 @@ class ProjectSystem
             Ide::get()->getMainForm()->hidePreloader();
             ProjectSystem::closeWithWelcome(false);
             Notifications::error('Поврежденный проект', 'Проект "' . fs::nameNoExt($fileName) . '" невозможно открыть, он поврежден или создан в новой версии DevelNext.');
+        } finally {
+            if ($lease) {
+                \devline\legacy\ProjectOwnership::release($lease);
+            }
         }
 
         return null;
@@ -433,5 +480,9 @@ class ProjectSystem
 
         FileSystem::clearCache();
         System::gc();
+        if (static::$projectLease) {
+            \devline\legacy\ProjectOwnership::release(static::$projectLease);
+            static::$projectLease = null;
+        }
     }
 }

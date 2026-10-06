@@ -9,13 +9,11 @@ use ide\forms\MessageBoxForm;
 use ide\Ide;
 use ide\IdeConfiguration;
 use ide\Logger;
-use ide\misc\SimpleSingleCommand;
 use ide\project\AbstractProjectBehaviour;
 use ide\project\behaviours\backup\Backup;
 use ide\project\behaviours\backup\BackupConfiguration;
 use ide\project\behaviours\backup\BackupCreateMasterCommand;
 use ide\project\behaviours\backup\BackupProjectControlPane;
-use ide\project\behaviours\backup\BackupSettingsMenuCommand;
 use ide\project\Project;
 use ide\project\ProjectExporter;
 use ide\project\ProjectImporter;
@@ -99,7 +97,7 @@ class BackupProjectBehaviour extends AbstractProjectBehaviour
             $projectFormat->addControlPane($this->controlPane);
         }
 
-        $this->makeMenu();
+        Ide::get()->registerCommand(new BackupCreateMasterCommand($this));
 
         fs::makeDir($this->getBackupDir());
 
@@ -559,23 +557,6 @@ class BackupProjectBehaviour extends AbstractProjectBehaviour
 
             $this->refreshRequest();
         }
-    }
-
-    public function makeMenu()
-    {
-        Ide::get()->getMainForm()->defineMenuGroup('backup', 'Архив проекта');
-
-        Ide::get()->registerCommand(new BackupCreateMasterCommand($this));
-        $command = SimpleSingleCommand::makeForMenu('Список копий проекта', null, function () {
-            /** @var ProjectEditor $projectEditor */
-            if ($projectEditor = FileSystem::open($this->project->getMainProjectFile())) {
-                $projectEditor->navigate(BackupProjectControlPane::class);
-            }
-        });
-        $command->setCategory('backup');
-        Ide::get()->registerCommand($command);
-        Ide::get()->registerCommand(new BackupSettingsMenuCommand($this));
-        //Ide::get()->registerCommand(new BackupCleanMasterCommand($this));
     }
 
     /**

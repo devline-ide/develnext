@@ -263,7 +263,6 @@ project(':develnext') {
         implementation project(':develnext-designer')
         implementation project(':jphp-gui-richtext-ext')
         implementation project(':dn-app-framework')
-        implementation project(':develnext-doc')
 
         // platforms
         file("$rootDir.path/platforms").listFiles().each { file ->

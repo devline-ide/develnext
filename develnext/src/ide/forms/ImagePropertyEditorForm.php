@@ -2,8 +2,6 @@
 namespace ide\forms;
 
 use Files;
-use ide\account\ui\NeedAuthPane;
-use ide\forms\area\IconSearchPaneArea;
 use ide\forms\mixins\DialogFormMixin;
 use ide\forms\mixins\SavableFormMixin;
 use ide\Ide;
@@ -43,7 +41,6 @@ use php\util\Flow;
  *
  * @property UXAnchorPane $imageView
  * @property UXFlowPane $gallery
- * @property UXAnchorPane $onlineSearchPane
  * @property UXTextField $projectQueryField
  * @property UXButton $projectSearchButton
  */
@@ -59,7 +56,6 @@ class ImagePropertyEditorForm extends AbstractIdeForm
     /** @var UXImageArea */
     protected $imageArea;
 
-    protected $searchPaneArea;
 
     /** @var UXFileChooser */
     protected $dialog;
@@ -98,12 +94,6 @@ class ImagePropertyEditorForm extends AbstractIdeForm
             $this->updateGallery();
         });
 
-        $this->searchPaneArea = new IconSearchPaneArea();
-        $this->searchPaneArea->on('action', function ($file) {
-            $this->setResultFile($file);
-            $this->hide();
-        });
-
         $dialog = DialogSystem::getImage();
         $this->dialog = $dialog;
 
@@ -117,19 +107,6 @@ class ImagePropertyEditorForm extends AbstractIdeForm
         $this->imageView->add($imageArea);
         $this->imageArea = $imageArea;
 
-        Ide::accountManager()->on('login', [$this, 'updateOnlineGallery'], __CLASS__);
-        Ide::accountManager()->on('logout', [$this, 'updateOnlineGallery'], __CLASS__);
-    }
-
-    public function updateOnlineGallery()
-    {
-        /*$this->onlineSearchPane->children->clear();
-
-        if (!Ide::accountManager()->isAuthorized()) {
-            $this->onlineSearchPane->add(new NeedAuthPane());
-        } else {
-            $this->onlineSearchPane->add($this->searchPaneArea);
-        } */
     }
 
     public function updateGallery($searchQuery = '')
@@ -290,7 +267,6 @@ class ImagePropertyEditorForm extends AbstractIdeForm
     public function actionShow()
     {
         $this->updateGallery($this->projectQueryField->text);
-        $this->updateOnlineGallery();
     }
 
     /**

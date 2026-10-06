@@ -46,6 +46,10 @@ class UXFragmentPaneWrapper extends UXNodeWrapper
             $form->showInFragment($node);
         });
 
+        if (!$value) {
+            return;
+        }
+
         $form = app()->getNewForm($value);
 
         if ($form instanceof AbstractForm) {

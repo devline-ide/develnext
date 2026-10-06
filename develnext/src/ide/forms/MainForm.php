@@ -13,11 +13,9 @@ use php\gui\layout\UXAnchorPane;
 use php\gui\layout\UXHBox;
 use php\gui\layout\UXVBox;
 use php\gui\UXDndTabPane;
-use php\gui\UXImage;
 use php\gui\UXLabel;
 use php\gui\UXMenu;
 use php\gui\UXMenuBar;
-use php\gui\UXMenuItem;
 use php\gui\UXNode;
 use php\gui\UXScreen;
 use php\gui\UXSplitPane;
@@ -221,41 +219,6 @@ class MainForm extends AbstractIdeForm
     {
         parent::show();
         Logger::info("Show main form ...");
-
-        $ideLanguage = Ide::get()->getLanguage();
-
-        $menu = $this->findSubMenu('menuL10n');
-        $menu->items->clear();
-
-        if ($ideLanguage) {
-            $menu->graphic = Ide::get()->getImage(new UXImage($ideLanguage->getIcon()));
-            $menu->text = 'Language';
-        }
-
-        foreach (Ide::get()->getLanguages() as $language) {
-            $item = new UXMenuItem($language->getTitle(), Ide::get()->getImage(new UXImage($language->getIcon())));
-
-            if ($language->getTitle() != $language->getTitleEn()) {
-                $item->text .= ' (' . $language->getTitleEn() . ')';
-            }
-
-            //$item->enabled = !$ideLanguage || $language->getCode() != $ideLanguage->getCode();
-
-            $item->on('action', function () use ($language, $item, $menu) {
-                $msg = new MessageBoxForm($language->getRestartMessage(), [$language->getRestartYes(), $language->getRestartNo()]);
-                $msg->makeWarning();
-                $msg->showDialog();
-
-                $menu->graphic = Ide::get()->getImage(new UXImage($language->getIcon()));
-                Ide::get()->setUserConfigValue('ide.language', $language->getCode());
-
-                if ($msg->getResultIndex() == 0) {
-                    Ide::get()->restart();
-                }
-            });
-
-            $menu->items->add($item);
-        }
 
         $screen = UXScreen::getPrimary();
 

@@ -1,10 +1,8 @@
 <?php
 namespace ide\protocol\handlers;
 
-use ide\account\api\ServiceResponse;
 use ide\commands\AbstractProjectCommand;
 use ide\forms\MessageBoxForm;
-use ide\forms\SharedProjectDetailForm;
 use ide\Ide;
 use ide\Logger;
 use ide\protocol\AbstractProtocolHandler;
@@ -34,7 +32,7 @@ class FileOpenProjectProtocolHandler extends AbstractProtocolHandler
     {
         Logger::info("Trigger open $query");
 
-        if (fs::hasExt($query, 'dnproject')) {
+        if (fs::hasExt($query, 'dnproject') || (fs::hasExt($query, 'dlproject') && class_exists('devline\legacy\Storage'))) {
             Ide::get()->disableOpenLastProject();
 
             Ide::get()->bind('start', function () use ($query) {

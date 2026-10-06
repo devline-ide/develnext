@@ -73,7 +73,7 @@ class ProjectFormat extends AbstractFormat
      */
     public function isValid($file)
     {
-        return fs::ext($file) == 'dnproject';
+        return fs::ext($file) == 'dnproject' || (fs::ext($file) == 'dlproject' && class_exists('devline\legacy\Storage'));
     }
 
     /**

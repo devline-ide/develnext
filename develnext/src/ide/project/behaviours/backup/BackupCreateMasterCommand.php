@@ -29,7 +29,7 @@ class BackupCreateMasterCommand extends AbstractCommand
 
     public function getCategory()
     {
-        return 'backup';
+        return 'project';
     }
 
     public function getName()

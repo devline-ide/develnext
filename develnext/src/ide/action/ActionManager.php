@@ -58,7 +58,8 @@ class ActionManager
         fs::scan($directory, function ($filename) use ($log, $directory, $outDirectory, $withSourceMap) {
             if (fs::ext($filename) == 'php') {
                 $newFile = $outDirectory . "/" . FileUtils::relativePath($directory, $filename);
-                $actionFile = $filename . '.axml';
+                $actionFile = class_exists('devline\legacy\Storage')
+                    ? \devline\legacy\Storage::sidecar($filename, '.php.axml') : $filename . '.axml';
 
                 if (fs::exists($actionFile)) {
                     fs::ensureParent($newFile);

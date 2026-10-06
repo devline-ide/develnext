@@ -35,6 +35,8 @@ class Notifications
             $class = get_class($e);
 
             $content = new UXTextArea("{$class}\n{$e->getMessage()}\n\nОшибка в файле '{$e->getFile()}'\n\t-> на строке {$e->getLine()}\n\n" . $e->getTraceAsString());
+            $pane->prefSize = [720, 320];
+            $content->editable = false;
             $content->padding = 10;
             UXAnchorPane::setAnchor($content, 0);
 
@@ -69,29 +71,9 @@ class Notifications
         return self::show($title, $message, 'SUCCESS');
     }
 
-    static function showAccountWelcome()
-    {
-        static::show('Приветствие', 'Добро пожаловать в социальную сеть DevelNext для разработчиков', 'INFORMATION');
-    }
-
-    static function showAccountUnavailable()
-    {
-        static::show('Аккаунт недоступен', 'Работа с аккаунтом временно недоступна, приносим свои извинения.', 'WARNING');
-    }
-
-    public static function showAccountAuthWelcome(array $data)
-    {
-        static::show('Добро пожаловать', 'Приветствуем тебя, ' . $data['login'] . ".");
-    }
-
     public static function showException(\Exception $e)
     {
         return static::show('Произошла ошибка', $e->getMessage(), 'ERROR');
-    }
-
-    public static function showAccountAuthorizationExpired()
-    {
-        static::show('Данные входа устарели', 'Вам необходимо снова зайти под своим пользователем, т.к. данных предыдущего входа устарели.', 'WARNING');
     }
 
     public static function showExecuteUnableStop()
@@ -138,13 +120,4 @@ class Notifications
         static::warning('Поврежденный файл', "$file поврежден, возможно некоторые данные утеряны.");
     }
 
-    public static function showProjectIsDeleted()
-    {
-        Notifications::show('Проект удален', 'Ваш проект был успешно удален из общего доступа, при желании вы можете снова им поделиться.', 'SUCCESS');
-    }
-
-    public static function showProjectIsDeletedFail()
-    {
-        Notifications::error('Ошибка удаления', 'Мы не смогли удалить ваш проект, возможно сервис временно недоступен, попробуйте позже.');
-    }
 }

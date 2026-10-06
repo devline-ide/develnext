@@ -113,23 +113,27 @@ class DebugClassLoader extends ClassLoader
 
         $t = Time::millis();
         $filenameEncoded = null;
-
-        if ($this->cacheDir && !$this->isIgnore($name)) {
-            $filenameEncoded = $this->cacheDir . "bytecode/$name.phb";
-
-            if (fs::isFile($filenameEncoded)) {
-                $module = new Module($filenameEncoded, true);
-                $module->call();
-
-                $t = Time::millis() - $t;
-                $this->allTime += $t;
-
-                echo "[DEBUG] load cached '$filename', $t ms\n";
-                return;
-            }
-        }
+        $sourceHash = null;
 
         try {
+            if ($this->cacheDir && !$this->isIgnore($name)) {
+                $filenameEncoded = $this->cacheDir . "bytecode/$name.phb";
+                $sourceHash = str::hash(Stream::getContents($filename), 'SHA-256');
+                $checksumFile = "$filenameEncoded.sha256";
+
+                if (fs::isFile($filenameEncoded) && fs::isFile($checksumFile)
+                    && str::trim(Stream::getContents($checksumFile)) === $sourceHash) {
+                    $module = new Module($filenameEncoded, true);
+                    $module->call();
+
+                    $t = Time::millis() - $t;
+                    $this->allTime += $t;
+
+                    echo "[DEBUG] load cached '$filename', $t ms\n";
+                    return;
+                }
+            }
+
             $this->threadPool->execute(function () use ($filename) {
                 $this->tryLoadSourceMap($filename);
             });
@@ -140,6 +144,7 @@ class DebugClassLoader extends ClassLoader
             if ($filenameEncoded && !$this->isIgnore($name)) {
                 if (fs::ensureParent($filenameEncoded)) {
                     $module->dump($filenameEncoded);
+                    Stream::putContents("$filenameEncoded.sha256", $sourceHash);
                 }
             }
 

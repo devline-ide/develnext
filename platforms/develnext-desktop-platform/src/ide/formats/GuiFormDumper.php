@@ -138,6 +138,11 @@ class GuiFormDumper extends AbstractFormDumper
             }
 
             if ($layout instanceof UXPane) {
+                // A detached FXML root has zero layout bounds before its first JavaFX pulse.
+                $layout->resize(
+                    $layout->prefWidth >= 0 ? $layout->prefWidth : $layout->width,
+                    $layout->prefHeight >= 0 ? $layout->prefHeight : $layout->height
+                );
                 $editor->setLayout($layout);
 
                 $this->trigger('load', [$editor, $layout]);

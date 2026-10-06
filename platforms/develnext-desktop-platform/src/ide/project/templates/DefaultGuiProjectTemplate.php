@@ -13,7 +13,6 @@ use ide\project\behaviours\GuiFrameworkProjectBehaviour;
 use ide\project\behaviours\JavaPlatformBehaviour;
 use ide\project\behaviours\PhpProjectBehaviour;
 use ide\project\behaviours\RunBuildProjectBehaviour;
-use ide\project\behaviours\ShareProjectBehaviour;
 use ide\project\Project;
 use ide\project\ProjectFile;
 use ide\systems\FileSystem;
@@ -73,10 +72,6 @@ class DefaultGuiProjectTemplate extends AbstractProjectTemplate
 
         if (!$project->hasBehaviour(RunBuildProjectBehaviour::class)) {
             $project->register(new RunBuildProjectBehaviour(), false);
-        }
-
-        if (!$project->hasBehaviour(ShareProjectBehaviour::class)) {
-            $project->register(new ShareProjectBehaviour(), false);
         }
 
         if (!$project->hasBehaviour(BackupProjectBehaviour::class)) {
@@ -239,7 +234,6 @@ class DefaultGuiProjectTemplate extends AbstractProjectTemplate
         $gui = $project->register(new GuiFrameworkProjectBehaviour());
 
         $project->register(new RunBuildProjectBehaviour());
-        $project->register(new ShareProjectBehaviour());
         $project->register(new BackupProjectBehaviour());
 
         $project->setIgnoreRules([

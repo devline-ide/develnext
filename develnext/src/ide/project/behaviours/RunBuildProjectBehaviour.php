@@ -94,6 +94,12 @@ class RunBuildProjectBehaviour extends AbstractProjectBehaviour
             }
         }
 
+        if (class_exists('devline\legacy\Storage')) {
+            foreach (\devline\legacy\Storage::runtimeLibraries($this->project->getRootDir()) as $library) {
+                $result[] = $library;
+            }
+        }
+
         $new = [];
 
         foreach ($result as $one) {

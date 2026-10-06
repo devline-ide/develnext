@@ -171,6 +171,7 @@ class Project
         $mainForm = Ide::get()->getMainForm();
 
         $this->tree = new ProjectTree($this);
+        $this->tree->addIgnorePaths(['.devline']);
         $this->indexer = new ProjectIndexer($this);
         $this->refactorManager = new ProjectRefactorManager($this);
 
@@ -189,7 +190,7 @@ class Project
 
         $name = $file->getName();
 
-        if (Str::endsWith($name, '.dnproject')) {
+        if (Str::endsWith($name, '.dnproject') || Str::endsWith($name, '.dlproject')) {
             $name = Str::sub($name, 0, Str::length($name) - 10);
         }
 
@@ -220,7 +221,9 @@ class Project
 
     public function getProjectFile()
     {
-        return $this->getFile($this->name . ".dnproject");
+        return class_exists('devline\legacy\Storage')
+            ? $this->getAbsoluteFile(\devline\legacy\Storage::projectFile($this->rootDir, $this->name))
+            : $this->getFile($this->name . ".dnproject");
     }
 
     /**
@@ -1075,6 +1078,9 @@ class Project
         Logger::info("Precompile project: env = $environment");
 
         $this->trigger(__FUNCTION__, $environment, $log);
+        if (class_exists('devline\legacy\Storage') && $this->getSrcGeneratedDirectory()) {
+            \devline\legacy\Storage::prepareRuntime($this->rootDir, $this->getSrcFile('', true));
+        }
     }
 
     /**

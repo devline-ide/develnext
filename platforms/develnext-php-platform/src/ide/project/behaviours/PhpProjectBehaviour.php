@@ -418,6 +418,8 @@ class PhpProjectBehaviour extends AbstractProjectBehaviour
                         try {
                             $name = str::replace($name, '\\', '/');
 
+                            if (!(new ZipFile($file))->has($name . '.php')) continue;
+
                             $url = new URL("jar:file:///$file!/$name.php");
 
                             $conn = $url->openConnection();
@@ -438,7 +440,7 @@ class PhpProjectBehaviour extends AbstractProjectBehaviour
 
                             return;
                         } catch (IOException $e) {
-                            echo "[ERROR] {$e->getMessage()}\n";
+                            echo "[ERROR] $file: {$e->getMessage()}\n";
                             // nop.
                         }
                     }

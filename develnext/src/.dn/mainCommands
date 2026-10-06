@@ -1,4 +1,3 @@
-ide\commands\MyAccountCommand
 ide\commands\NewProjectCommand
 ide\commands\OpenProjectCommand
 ide\commands\SaveProjectCommand
@@ -10,10 +9,3 @@ ide\commands\ExitCommand
 
 ide\commands\IdeLogShowCommand
 ide\commands\IdeSandboxShowCommand
-
-ide\commands\OfficialSiteCommand
-ide\commands\YoutubeChannelCommand
-ide\commands\VkGroupCommand
-
-ide\commands\CheckUpdatesCommand
-ide\commands\AboutCommand
