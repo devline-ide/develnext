@@ -1,0 +1,20 @@
+<element extends="ide\scripts\elements\AbstractComponent">
+    <init>
+        <property code="path" value="config.vdf" />
+        <property code="autoSave" value="1" />
+        <property code="prettyPrint" value="1" />
+        <property code="rootName" value="Config" />
+        <property code="escapeSequences" value="0" />
+    </init>
+    <properties group="general" title="Главное">
+        <property code="path" name="Источник" editor="text" tooltip="Valve KeyValues 1, текстовые именованные блоки" />
+        <property code="autoSave" name="Автосохранение" editor="boolean" tooltip="Сохранять данные при изменениях" />
+        <property code="prettyPrint" name="Форматировать" editor="boolean" tooltip="Добавлять отступы" />
+        <property code="rootName" name="Корневой блок" editor="text" tooltip="Имя блока для вызовов без секции" />
+        <property code="escapeSequences" name="Escape-последовательности" editor="boolean" tooltip="Обрабатывать обратный слеш, кавычки, переносы строк и табуляцию, как UsesEscapeSequences в Valve" />
+    </properties>
+    <eventTypes>
+        <eventType code="save" name="Сохранение" kind="ObjectEvent" />
+        <eventType code="error" name="Ошибка чтения/записи" kind="ObjectEvent" />
+    </eventTypes>
+</element>

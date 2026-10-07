@@ -1,5 +1,6 @@
 
 include 'develnext-designer';
+include 'jfoenix-modern';
 
 include 'jphp-desktop-hotkey-ext',
         'dn-app-framework',

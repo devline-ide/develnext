@@ -58,6 +58,14 @@ allprojects {
         mavenCentral()
     }
 
+    if (project.name != 'jfoenix-modern') {
+        configurations.configureEach {
+            resolutionStrategy.dependencySubstitution {
+                substitute module('com.jfoenix:jfoenix') using project(':jfoenix-modern')
+            }
+        }
+    }
+
     configurations.runtimeClasspath {
         exclude group: 'org.openjfx'
     }
@@ -78,7 +86,7 @@ allprojects {
     }
 
     tasks.withType(JavaCompile) {
-        dependsOn rootProject.prepareSourceDependencies
+        if (project.name != 'jfoenix-modern') dependsOn rootProject.prepareSourceDependencies
     }
 }
 

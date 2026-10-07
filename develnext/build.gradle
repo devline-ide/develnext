@@ -28,7 +28,7 @@ configurations {
 }
 
 dependencies {
-    legacyJfoenixRuntime 'com.jfoenix:jfoenix:9.0.10'
+    legacyJfoenixRuntime project(':jfoenix-modern')
     legacyJfoenixRuntime "org.develnext.jphp:jphp-gui-jfoenix-ext:$jphpVersion"
 }
 
@@ -201,7 +201,7 @@ task prepareDist(dependsOn: ['installDist']) {
                         el.file.delete();
                         el.file.deleteOnExit();
                     } else {
-                        el.file.renameTo(file(el.file.parent + "/" + name));
+                        java.nio.file.Files.move(el.file.toPath(), file(el.file.parent + "/" + name).toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
                     }
                 }
             }
@@ -511,4 +511,15 @@ task distIdeLinuxSetup(type: Tar, dependsOn: ['clean', 'distIdeLinux']) {
 
 task distAll(dependsOn: ['distIdeWindowsSetup', 'distIdeLinuxSetup']) {
 
+}
+
+// Focused dependency update; does not rebuild or restart the IDE.
+tasks.register('installMaterialRuntime', Copy) {
+    dependsOn ':jfoenix-modern:jar'
+    inputs.file('src/javafx-compatibility.args')
+    outputs.file(layout.buildDirectory.file('install/develnext/javafx-compatibility.args'))
+    from(project(':jfoenix-modern').tasks.named('jar').flatMap { it.archiveFile })
+    into layout.buildDirectory.dir('install/develnext/library/bundles/dn-jfoenix-bundle')
+    rename { 'jfoenix.jar' }
+    doLast { copyJavaFxCompatibilityArgs(layout.buildDirectory.dir('install/develnext').get().asFile) }
 }

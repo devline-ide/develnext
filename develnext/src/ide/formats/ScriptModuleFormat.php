@@ -18,6 +18,8 @@ use ide\scripts\elements\FileChooserScriptComponent;
 use ide\scripts\elements\FileScriptComponent;
 use ide\scripts\elements\IniStorageComponent;
 use ide\scripts\elements\JsonStorageComponent;
+use ide\scripts\elements\YamlStorageComponent;
+use ide\scripts\elements\VdfStorageComponent;
 use ide\scripts\elements\MacroScriptComponent;
 use ide\scripts\elements\MediaPlayerScriptComponent;
 use ide\scripts\elements\ModuleScriptComponent;
@@ -60,6 +62,8 @@ class ScriptModuleFormat extends AbstractFormFormat
         $this->register(new PrinterScriptComponent());
         $this->register(new IniStorageComponent());
         $this->register(new JsonStorageComponent());
+        $this->register(new YamlStorageComponent());
+        $this->register(new VdfStorageComponent());
 
         // Context Menu.
         $this->register(new SelectAllMenuCommand());

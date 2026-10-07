@@ -1,0 +1,16 @@
+<element extends="ide\scripts\elements\AbstractComponent">
+    <init>
+        <property code="path" value="config.yaml" />
+        <property code="autoSave" value="1" />
+        <property code="prettyPrint" value="1" />
+    </init>
+    <properties group="general" title="Главное">
+        <property code="path" name="Источник" editor="text" tooltip="YAML и YML файл с секциями и типизированными значениями" />
+        <property code="autoSave" name="Автосохранение" editor="boolean" tooltip="Сохранять данные при изменениях" />
+        <property code="prettyPrint" name="Форматировать" editor="boolean" tooltip="Добавлять отступы" />
+    </properties>
+    <eventTypes>
+        <eventType code="save" name="Сохранение" kind="ObjectEvent" />
+        <eventType code="error" name="Ошибка чтения/записи" kind="ObjectEvent" />
+    </eventTypes>
+</element>

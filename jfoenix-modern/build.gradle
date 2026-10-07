@@ -1,0 +1,74 @@
+plugins { id 'java-library' }
+
+group = 'org.develnext'
+version = '9.0.10-dl25.1'
+java { toolchain { languageVersion = JavaLanguageVersion.of(25) } }
+repositories { mavenCentral() }
+configurations {
+    upstreamBinary { transitive = false; resolutionStrategy.useGlobalDependencySubstitutionRules = false }
+    upstreamSources { transitive = false; resolutionStrategy.useGlobalDependencySubstitutionRules = false }
+    javafxRuntime
+}
+def platform = providers.gradleProperty('javafxPlatform').getOrElse(System.getProperty('os.name').startsWith('Windows') ? 'win' : System.getProperty('os.name').contains('Mac') ? 'mac' : 'linux')
+dependencies {
+    upstreamBinary 'com.jfoenix:jfoenix:9.0.10'
+    upstreamSources 'com.jfoenix:jfoenix:9.0.10:sources'
+    compileOnly files(configurations.upstreamBinary)
+    testImplementation files(configurations.upstreamBinary)
+    for (module in ['base', 'graphics', 'controls', 'fxml']) {
+        compileOnly("org.openjfx:javafx-${module}:25.0.4:${platform}") { transitive = false }
+        testCompileOnly("org.openjfx:javafx-${module}:25.0.4:${platform}") { transitive = false }
+        javafxRuntime("org.openjfx:javafx-${module}:25.0.4:${platform}") { transitive = false }
+    }
+}
+// One authoritative JAR: unchanged upstream classes/resources plus compiled source repairs.
+// No duplicate JFoenix JAR or runtime class overlay is distributed.
+tasks.named('jar', Jar) {
+    archiveBaseName = 'jfoenix-modern'
+    preserveFileTimestamps = false
+    reproducibleFileOrder = true
+    from({ zipTree(configurations.upstreamBinary.singleFile) }) {
+        exclude 'module-info.class', 'META-INF/versions/**', 'META-INF/MANIFEST.MF'
+        exclude { entry -> entry.path.endsWith('.class') && fileTree('src/main/java').files.any { source ->
+            def name = file('src/main/java').toPath().relativize(source.toPath()).toString().replace('\\', '/').replace('.java', '')
+            entry.path == name + '.class' || entry.path.startsWith(name + '$')
+        } }
+    }
+    manifest { attributes('Automatic-Module-Name': 'com.jfoenix', 'JFoenix-Upstream-Version': '9.0.10', 'JFoenix-JavaFX-Target': '25') }
+    duplicatesStrategy = DuplicatesStrategy.FAIL
+}
+tasks.register('modernSkinsCheck', JavaExec) {
+    group = 'verification'
+    dependsOn tasks.jar, tasks.testClasses
+    classpath = files(sourceSets.test.output, tasks.named('jar', Jar).flatMap { it.archiveFile })
+    mainClass = 'com.jfoenix.ModernSkinsCheck'
+    doFirst { jvmArgs('--module-path', configurations.javafxRuntime.asPath, '--add-modules', 'javafx.controls,javafx.fxml', '--enable-native-access=javafx.graphics') }
+}
+
+// Repaired sources and the unchanged source inventory remain redistributable.
+def sourceArchive = tasks.findByName('sourcesJar') ? tasks.named('sourcesJar', Jar) : tasks.register('sourcesJar', Jar) {
+    archiveClassifier = 'sources'
+    from sourceSets.main.allSource
+}
+sourceArchive.configure {
+    from({ zipTree(configurations.upstreamSources.singleFile) }) {
+        exclude { entry -> file('src/main/java/' + entry.path).isFile() }
+    }
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
+tasks.register('realMaterialFxmlCheck', JavaExec) {
+    group = 'verification'
+    dependsOn tasks.jar, tasks.testClasses
+    def distribution = file(providers.gradleProperty('legacyDistribution').getOrElse('../develnext/build/install/develnext'))
+    classpath = files(sourceSets.test.output, tasks.named('jar', Jar).flatMap { it.archiveFile },
+        fileTree(distribution.toPath().resolve('lib').toFile()) { include '*.jar'; exclude 'jfoenix*', 'javafx*' })
+    mainClass = 'com.jfoenix.RealMaterialFxmlCheck'
+    doFirst {
+        args(providers.gradleProperty('materialFxml').get())
+        jvmArgs('--module-path', configurations.javafxRuntime.asPath, '--add-modules', 'javafx.controls,javafx.fxml', '--enable-native-access=javafx.graphics')
+        // The unchanged legacy controls outside this repair still use existing exported behavior APIs.
+        // The removed java.lang.reflect open is deliberately absent.
+        jvmArgs(file('../develnext/src/javafx-compatibility.args').readLines('UTF-8').findAll { it.startsWith('--add-exports=') })
+    }
+}

@@ -1,0 +1,6 @@
+JFoenix JavaFX 25 source repairs
+Derived from JFoenix 9.0.10 (com.jfoenix:jfoenix), developed by JFoenix contributors.
+Upstream source headers and Roboto font license are preserved.
+JavaFX 25 repairs in src/main/java were made for DevelNext/DevLine in 2026.
+This distribution combines repaired Apache-2.0 sources with unchanged upstream
+classes and resources. No Oracle/OpenJFX implementation source is included.
