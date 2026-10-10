@@ -41,6 +41,7 @@ abstract class AbstractModule extends AbstractScript
      * @var AbstractModule
      */
     private $__modules = [];
+    private $__releasing = false;
 
     /**
      * @var bool
@@ -57,15 +58,17 @@ abstract class AbstractModule extends AbstractScript
         $this->id = (new ReflectionClass($this))->getShortName();
         $this->_enabledGetters = $this->_enabledSetters = false;
 
-        $this->loadModule();
-
-        if (!$mock) {
-            $this->loadBinds($this);
-
-            $this->__behaviourManager = new ModuleBehaviourManager($this);
-            BehaviourLoader::load("{$this->getResourcePath()}.behaviour", $this->__behaviourManager);
-
-            Logger::debug("Module '$this->id' is created.");
+        try {
+            $this->loadModule();
+            if (!$mock) {
+                $this->loadBinds($this);
+                $this->__behaviourManager = \php\gui\framework\behaviour\custom\BehaviourManager::create($this, ModuleBehaviourManager::class);
+                BehaviourLoader::load("{$this->getResourcePath()}.behaviour", $this->__behaviourManager);
+                Logger::debug("Module '$this->id' is created.");
+            }
+        } catch (\Throwable $failure) {
+            try { $this->free(); } catch (\Throwable $cleanup) { }
+            throw $failure;
         }
     }
 
@@ -98,9 +101,8 @@ abstract class AbstractModule extends AbstractScript
                             /** @var AbstractScript $script */
                             $script = new $type();
                             $script->id = $id;
-                            $this->loadScript($script, $meta);
-
                             $this->__scripts[$id] = $script;
+                            $this->loadScript($script, $meta);
                         }
                     }
                 }
@@ -202,7 +204,7 @@ abstract class AbstractModule extends AbstractScript
      */
     public function getScript($name)
     {
-        return $this->__scripts[$name];
+        return $this->__scripts[$name] ?? null;
     }
 
     public function __get($name)
@@ -211,11 +213,13 @@ abstract class AbstractModule extends AbstractScript
             return $this->__scripts[$name];
         }
 
+        if ($name === 'behaviour') return $this->__behaviourManager;
         return parent::__get($name);
     }
 
     public function __isset($name)
     {
+        if ($name === 'behaviour' && $this->__behaviourManager !== null) return true;
         return isset($this->__scripts[$name]) || parent::__isset($name);
     }
 
@@ -240,12 +244,16 @@ abstract class AbstractModule extends AbstractScript
 
     public function free()
     {
-        parent::free();
-
-        foreach ($this->__scripts as $script) {
-            $script->free();
-        }
-
-        Logger::debug("Module '{$this->id}' (context={$this->getContextFormName()}) is destroyed");
+        if ($this->isFree() || $this->__releasing) return;
+        $this->__releasing = true;
+        $failure = null;
+        try {
+            try { parent::free(); } catch (\Throwable $cause) { $failure = $cause; }
+            foreach ($this->__scripts as $script) {
+                try { $script->free(); } catch (\Throwable $cause) { if (!$failure) $failure = $cause; }
+            }
+            Logger::debug("Module '{$this->id}' (context={$this->getContextFormName()}) is destroyed");
+        } finally { $this->__releasing = false; }
+        if ($failure) throw $failure;
     }
 }

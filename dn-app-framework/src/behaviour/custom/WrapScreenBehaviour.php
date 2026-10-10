@@ -46,10 +46,10 @@ class WrapScreenBehaviour extends AbstractBehaviour
                 $this->align();
             };
 
-            $target->observer('layoutX')->addListener($listener);
-            $target->observer('layoutY')->addListener($listener);
-            $target->observer('width')->addListener($listener);
-            $target->observer('height')->addListener($listener);
+            $this->bindObserver($target, 'layoutX', $listener);
+            $this->bindObserver($target, 'layoutY', $listener);
+            $this->bindObserver($target, 'width', $listener);
+            $this->bindObserver($target, 'height', $listener);
         }
     }
 

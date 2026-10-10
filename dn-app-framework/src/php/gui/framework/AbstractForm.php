@@ -67,6 +67,8 @@ abstract class AbstractForm extends UXForm
      */
     protected $_modules = [];
 
+    private $_released = false;
+
     /**
      * @hidden
      * @var BehaviourManager
@@ -108,34 +110,39 @@ abstract class AbstractForm extends UXForm
         parent::__construct($origin);
 
         $this->_app = Application::get();
-        $this->loadConfig(null, false);
+        try {
+            $this->loadConfig(null, false);
 
-        $this->loadDesign();
+            $this->loadDesign();
 
-        $this->eventBinder = new EventBinder(null, $this);
+            $this->eventBinder = new EventBinder(null, $this);
 
-        if ($loadEvents) {
-            $this->loadBindings();
+            if ($loadEvents) {
+                $this->loadBindings();
+            }
+
+            $this->applyConfig();
+
+            $this->init();
+
+            $this->addStylesheet('/php/gui/framework/style.css');
+
+            foreach ($this->_app->getStyles() as $one) {
+                $this->addStylesheet($one);
+            }
+
+            $this->behaviourManager = $behaviourManager = BehaviourManager::create($this, FormBehaviourManager::class);
+
+            if ($loadBehaviours) {
+                $this->loadBehaviours();
+                $this->loadClones();  // TODO Refactor it.
+            }
+
+            Logger::debug("Form '{$this->getName()}' is created.");
+        } catch (\Throwable $failure) {
+            try { $this->free(); } catch (\Throwable $cleanup) { }
+            throw $failure;
         }
-
-        $this->applyConfig();
-
-        $this->init();
-
-        $this->addStylesheet('/php/gui/framework/style.css');
-
-        foreach ($this->_app->getStyles() as $one) {
-            $this->addStylesheet($one);
-        }
-
-        $this->behaviourManager = $behaviourManager = new FormBehaviourManager($this);
-
-        if ($loadBehaviours) {
-            $this->loadBehaviours();
-            $this->loadClones();  // TODO Refactor it.
-        }
-
-        Logger::debug("Form '{$this->getName()}' is created.");
     }
 
     protected static function getResourcePathByClassName()
@@ -218,6 +225,7 @@ abstract class AbstractForm extends UXForm
 
     protected function getFactory()
     {
+        if ($this->_released) throw new IllegalStateException('Form has been freed');
         if (!$this->standaloneFactory) {
             $this->standaloneFactory = new StandaloneFactory(
                 $this,
@@ -386,17 +394,24 @@ abstract class AbstractForm extends UXForm
 
     public function free()
     {
-        $this->hide();
+        if ($this->_released) return;
+        $this->_released = true;
+        $failure = null;
+        try { BehaviourManager::beginFormRelease($this); } catch (\Throwable $error) { $failure = $error; }
+        try { $this->hide(); } catch (\Throwable $error) { if (!$failure) $failure = $error; }
 
         foreach ($this->_modules as $module) {
             if (!$module->singleton) {
-                $module->free();
+                try { $module->free(); } catch (\Throwable $error) { if (!$failure) $failure = $error; }
             }
         }
 
-        $this->_app->__cleanCacheForm($this->getName());
+        try { if ($this->standaloneFactory) $this->standaloneFactory->free(); } catch (\Throwable $error) { if (!$failure) $failure = $error; }
+        try { BehaviourManager::releaseForm($this); } catch (\Throwable $error) { if (!$failure) $failure = $error; }
+        $this->_app->__cleanCacheForm($this->getName(), $this);
 
         Logger::debug("Form '{$this->getName()}' is destroyed");
+        if ($failure) throw $failure;
     }
 
     public function isFree()
@@ -427,16 +442,16 @@ abstract class AbstractForm extends UXForm
      */
     protected function module($id)
     {
-        $module = $this->_modules[$id];
+        $qualified = ltrim($id, '\\');
+        $class = "{$this->_app->getNamespace()}\\modules\\$qualified";
+        $module = $this->_modules[$id] ?? $this->_modules[$class] ?? null;
 
         if (!$module) {
-            $module = $this->_modules["{$this->_app->getNamespace()}\\modules\\$id"];
-        }
-
-        if (!$module) {
+            foreach ($this->_modules as $candidate) {
+                if (str::equalsIgnoreCase($qualified, get_class($candidate)) || str::equalsIgnoreCase($class, get_class($candidate))) return $candidate;
+            }
             throw new Exception("Unable to find '$id' module");
         }
-
         return $module;
     }
 

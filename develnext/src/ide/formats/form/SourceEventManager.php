@@ -237,9 +237,10 @@ class SourceEventManager
      */
     public function renameBind($oldId, $newId, array $eventsWithIdParam = [])
     {
-        $parser = new PhpParser($this->loadContent());
-
         $binds = $this->findBinds($oldId);
+        if (!$binds && !$eventsWithIdParam) return [];
+
+        $parser = new PhpParser($this->loadContent());
 
         $i = 0;
 

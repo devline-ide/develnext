@@ -53,13 +53,13 @@ class ChatterAnimationBehaviour extends AnimationBehaviour
             $propY = 'layoutY';
         }
 
-        $target->observer($propX)->addListener(function ($old, $new) use ($xValue, $sleep) {
+        $this->bindObserver($target, $propX, function ($old, $new) use ($xValue, $sleep) {
             if (!$sleep->get()) {
                 $xValue->set($new);
             }
         });
 
-        $target->observer($propY)->addListener(function ($old, $new) use ($yValue, $sleep) {
+        $this->bindObserver($target, $propY, function ($old, $new) use ($yValue, $sleep) {
             if (!$sleep->get()) {
                 $yValue->set($new);
             }
@@ -67,6 +67,10 @@ class ChatterAnimationBehaviour extends AnimationBehaviour
 
         $this->timer($this->duration, function (ScriptEvent $e) use ($xValue, $yValue, $sleep) {
             $e->sender->interval = $this->duration;
+            if (!$this->checkRepeatLimits()) {
+                $e->sender->stop();
+                return;
+            }
 
             $target = $this->_target;
 

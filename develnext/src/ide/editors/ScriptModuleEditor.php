@@ -62,6 +62,7 @@ class ScriptModuleEditor extends FormEditor
      * @var array
      */
     protected $properties;
+    protected $componentOrigins = [];
 
     public function __construct($file)
     {
@@ -72,6 +73,9 @@ class ScriptModuleEditor extends FormEditor
         parent::__construct($file, new GuiFormDumper([]));
 
         $this->behaviourManager->setTargetGetter(function ($nodeId) {
+            if (!$nodeId) {
+                return $this->getFormat()->getFormElement($this);
+            }
             $container = $this->components[$nodeId];
 
             if ($container) {
@@ -259,13 +263,17 @@ class ScriptModuleEditor extends FormEditor
                 'type' => $component->getType()->getType(),
                 'x' => $component->getX(),
                 'y' => $component->getY(),
-                'props' => (array)$component->getProperties(),
+                'props' => (array)$component->getProperties(class_exists('devline\legacy\Storage')),
             ];
 
             $meta['components'][$id] = $cmpMeta;
         }
 
-        FileUtils::put(fs::pathNoExt($this->file) . '.module', $this->json->format($meta));
+        $source = $this->json->format($meta);
+        if (!class_exists('devline\legacy\Storage') || !\devline\legacy\Storage::saveModule($this->file, $source, $this->json->format((object)$this->componentOrigins))) {
+            FileUtils::put(fs::pathNoExt($this->file) . '.module', $source);
+        }
+        $this->componentOrigins = [];
     }
 
     public function addContainer(ScriptComponentContainer $container)
@@ -391,6 +399,11 @@ class ScriptModuleEditor extends FormEditor
 
         $this->components[$newId] = $this->components[$oldId];
         unset($this->components[$oldId]);
+
+        if (class_exists('devline\legacy\Storage')) {
+            $this->componentOrigins[$newId] = $this->componentOrigins[$oldId] ?? $oldId;
+            unset($this->componentOrigins[$oldId]);
+        }
 
         // other ...
 

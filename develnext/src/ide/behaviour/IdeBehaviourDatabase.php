@@ -132,6 +132,10 @@ class IdeBehaviourDatabase
      */
     public function getBehaviourSpec(AbstractBehaviour $behaviour)
     {
+        if ($behaviour instanceof \devline\legacy\ProjectDesignerBehaviour) {
+            return $behaviour->getDesignerSpec();
+        }
+
         return $this->specs[get_class($behaviour)];
     }
 
@@ -153,6 +157,9 @@ class IdeBehaviourDatabase
      */
     public function getAllBehaviourSpecs()
     {
+        if (class_exists('devline\\legacy\\ProjectBehaviourSpec')) {
+            \devline\legacy\ProjectBehaviourSpec::refresh();
+        }
         return $this->specs;
     }
 }

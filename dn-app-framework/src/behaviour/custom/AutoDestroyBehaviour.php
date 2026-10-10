@@ -43,7 +43,7 @@ class AutoDestroyBehaviour extends AnimationBehaviour
         $this->timer(50, function (ScriptEvent $e) use ($target) {
             $e->sender->stop();
 
-            waitAsync($this->delay, function () use ($target, $e) {
+            $this->later($this->delay, function () use ($target, $e) {
                 if ($target->isFree()) {
                     return;
                 }
@@ -57,7 +57,7 @@ class AutoDestroyBehaviour extends AnimationBehaviour
                     if (!$this->animated || (!($target instanceof UXNode) && !($target instanceof UXWindow) )) {
                         $destroy();
                     } else {
-                        Animation::fadeOut($target, $this->duration, $destroy);
+                        $this->animate('fadeOut', $target, $this->duration, $destroy);
                     }
                 } else {
                     $e->sender->start();

@@ -43,29 +43,39 @@ class ScaleAnimationBehaviour extends AnimationBehaviour
 
     protected $_in = false;
     protected $_out = false;
+    protected $_transition;
+    protected $_transitionGeneration = 0;
+
+    public function __clone()
+    {
+        parent::__clone();
+        $this->_in = $this->_out = false;
+        $this->_transition = null;
+        $this->_transitionGeneration = 0;
+    }
 
     protected function _scaleInCallback()
     {
-        if ($this->enabled && !$this->_in) {
+        if ($this->enabled && $this->checkRepeatLimits()) {
+            $this->cancelAnimation($this->_transition);
+            $generation = ++$this->_transitionGeneration;
             $this->_in = true;
+            $this->_out = false;
 
-            Animation::scaleTo($this->_target, $this->duration, $this->scale, function () {
+            $this->_transition = $this->animate('scaleTo', $this->_target, $this->duration, $this->scale, function () use ($generation) {
+                if ($generation !== $this->_transitionGeneration) return;
+                $this->_transition = null;
                 $this->_in = false;
-
-                if ($this->_out) {
-                    Animation::scaleTo($this->_target, $this->duration, $this->initialScale, function () {
-                        $this->_out = false;
-                    });
-                }
             });
         }
     }
 
     public function enable()
     {
+        $wasEnabled = $this->enabled;
         parent::enable();
 
-        $this->_scaleInCallback();
+        if (!$wasEnabled && $this->_target) $this->_scaleInCallback();
     }
 
 
@@ -74,15 +84,15 @@ class ScaleAnimationBehaviour extends AnimationBehaviour
         parent::restore();
 
         if (!$this->_out) {
+            $this->cancelAnimation($this->_transition);
+            $generation = ++$this->_transitionGeneration;
+            $this->_in = false;
             $this->_out = true;
-
-            if ($this->_in) {
-                // ...
-            } else {
-                Animation::scaleTo($this->_target, $this->duration, $this->initialScale, function () {
-                    $this->_out = false;
-                });
-            }
+            $this->_transition = $this->animate('scaleTo', $this->_target, $this->duration, $this->initialScale, function () use ($generation) {
+                if ($generation !== $this->_transitionGeneration) return;
+                $this->_transition = null;
+                $this->_out = false;
+            });
         }
     }
 

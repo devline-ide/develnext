@@ -36,23 +36,21 @@ class KeyInputRuleBehaviour extends AbstractBehaviour
     protected function applyImpl($target)
     {
         if ($target instanceof UXTextInputControl) {
-            $target->observer('text')->addListener(function ($old, $new) use ($target) {
+            $this->bindObserver($target, 'text', function ($old, $new) use ($target) {
+                if (!$this->enabled) return;
                 $changed = false;
 
                 if (str::trim($this->allowedSymbols)) {
                     $allowedSymbols = str::trim($this->allowedSymbols);
+                    if (!$this->matchCase) $allowedSymbols = str::lower($allowedSymbols);
 
                     $text = '';
 
                     for ($i = 0; $i < str::length($new); $i++) {
                         $character = $new[$i];
+                        $comparison = $this->matchCase ? $character : str::lower($character);
 
-                        if (!$this->matchCase) {
-                            $allowedSymbols = str::lower($allowedSymbols);
-                            $character = str::lower($character);
-                        }
-
-                        if (str::contains($allowedSymbols, $character)) {
+                        if (str::contains($allowedSymbols, $comparison)) {
                             $text .= $character;
                         } else {
                             $changed = true;
@@ -72,7 +70,8 @@ class KeyInputRuleBehaviour extends AbstractBehaviour
                 }
             });
 
-            $target->on('keyPress', function (UXKeyEvent $e) use ($target) {
+            $this->bindEvent($target, 'keyPress', function (UXKeyEvent $e) use ($target) {
+                if (!$this->enabled) return;
                 switch ($e->codeName) {
                     case 'Enter':
                     case 'Backspace':

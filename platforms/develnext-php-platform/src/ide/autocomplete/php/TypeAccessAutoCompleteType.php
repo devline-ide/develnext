@@ -354,7 +354,7 @@ class TypeAccessAutoCompleteType extends AutoCompleteType
 
             $this->typeData = $this->inspector->collectTypeData($type->fulledName);
 
-            return $this->getTypeMethods($this->inspector, $this->accessType, $this->typeData['getters'], $type, $contextClass);
+            return $this->getTypeMethods($this->inspector, $this->accessType, (bool) $this->typeData['getters'], $type, $contextClass);
         } elseif ($reflection = $this->reflection) {
             foreach ($reflection->getMethods(\ReflectionMethod::IS_PUBLIC) as $method) {
                 if ($method->isStatic() || $method->isAbstract()) {

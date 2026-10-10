@@ -5,6 +5,7 @@ use php\gui\framework\AbstractModule;
 use php\gui\framework\AbstractScript;
 use php\gui\UXNode;
 use php\gui\UXWindow;
+use php\lang\IllegalArgumentException;
 
 /**
  * Class ModuleBehaviourManager

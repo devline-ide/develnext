@@ -70,6 +70,11 @@ allprojects {
         exclude group: 'org.openjfx'
     }
 
+    configurations.configureEach {
+        // Source publications reuse SNAPSHOT coordinates; each build must inspect their current metadata.
+        resolutionStrategy.cacheChangingModulesFor 0, 'seconds'
+    }
+
     dependencies {
         compileOnly("org.openjfx:javafx-base:${javafxVersion}:${javafxPlatform}") { transitive = false }
         compileOnly("org.openjfx:javafx-graphics:${javafxVersion}:${javafxPlatform}") { transitive = false }

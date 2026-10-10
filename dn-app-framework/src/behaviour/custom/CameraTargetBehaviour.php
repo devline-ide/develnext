@@ -59,8 +59,8 @@ class CameraTargetBehaviour extends AbstractBehaviour
                     }
                 };
 
-                $target->observer('layoutX')->addListener($listener);
-                $target->observer('layoutY')->addListener($listener);
+                $this->bindObserver($target, 'layoutX', $listener);
+                $this->bindObserver($target, 'layoutY', $listener);
         }
     }
 

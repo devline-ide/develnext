@@ -344,6 +344,7 @@ class PhpProjectBehaviour extends AbstractProjectBehaviour
         if ($useByteCode && $this->isByteCodeEnabled()) {
             $scope = new Environment(null, Environment::HOT_RELOAD);
             $scope->importClass(FileUtils::class);
+            $scope->importClass(self::class);
 
             $zipLibraries = $this->collectZipLibraries();
 
@@ -355,6 +356,12 @@ class PhpProjectBehaviour extends AbstractProjectBehaviour
             if ($bundle = BundleProjectBehaviour::get()) {
                 foreach ($bundle->fetchAllBundles($env) as $one) {
                     $dirs[] = $one->getProjectVendorDirectory();
+                }
+            }
+            foreach ($this->project->getModules() as $module) {
+                if ($module->isDir()) {
+                    $directory = File::of($module->getId());
+                    $dirs[] = $directory->isAbsolute() ? $directory : $this->project->getFile($module->getId());
                 }
             }
 
@@ -390,6 +397,7 @@ class PhpProjectBehaviour extends AbstractProjectBehaviour
 
                 spl_autoload_register(function ($name) use ($zipLibraries, $generatedDirectory, $dirs, &$includedFiles) {
                     echo("Try class '$name' auto load\n");
+                    $name = str::replace($name, '\\', '/');
 
                     foreach ($dirs as $dir) {
                         $filename = "$dir/$name.php";
@@ -403,7 +411,7 @@ class PhpProjectBehaviour extends AbstractProjectBehaviour
                             $includedFiles[FileUtils::hashName($filename)] = true;
 
                             $fileStream = new FileStream($filename);
-                            $module = new Module($fileStream, false, true);
+                            $module = new Module($fileStream, false, true, "res://$name.php");
                             $module->dump($compiled, true);
                             $fileStream->close();
                             return;
@@ -425,7 +433,7 @@ class PhpProjectBehaviour extends AbstractProjectBehaviour
                             $conn = $url->openConnection();
                             $stream = $conn->getInputStream();
 
-                            $module = new Module($stream, false);
+                            $module = new Module($stream, false, true, "res://$name.php");
                             $module->call();
 
                             $stream->close();
@@ -475,9 +483,9 @@ class PhpProjectBehaviour extends AbstractProjectBehaviour
                         }
 
                         $includedFiles[FileUtils::hashName($filename)] = true;
-                        $scope->execute(function () use ($filename, $compiledFile) {
+                        $scope->execute(function () use ($filename, $compiledFile, $relativePath) {
                             $fileStream = new FileStream($filename);
-                            $module = new Module($fileStream, false, true);
+                            $module = new Module($fileStream, false, true, 'res://' . str::replace($relativePath, '\\', '/'));
                             $stream = new FileStream($compiledFile, 'w+');
                             $module->dump($stream, true);
                             $stream->close();
@@ -487,7 +495,7 @@ class PhpProjectBehaviour extends AbstractProjectBehaviour
                 });
             }
 
-            fs::scan($generatedDirectory, function ($filename) use ($log, $scope, $useByteCode, &$includedFiles) {
+            fs::scan($generatedDirectory, function ($filename) use ($log, $scope, $useByteCode, $generatedDirectory, &$includedFiles) {
                 if (fs::ext($filename) == 'php') {
                     if ($includedFiles[FileUtils::hashName($filename)]) {
                         return;
@@ -501,10 +509,11 @@ class PhpProjectBehaviour extends AbstractProjectBehaviour
 
                     $includedFiles[FileUtils::hashName($filename)] = true;
 
-                    $scope->execute(function () use ($filename, $compiledFile) {
+                    $relativePath = FileUtils::relativePath($generatedDirectory, $filename);
+                    $scope->execute(function () use ($filename, $compiledFile, $relativePath) {
                         $stream = new FileStream($compiledFile, 'w+');
                         $fileStream = new FileStream($filename);
-                        $module = new Module($fileStream, false, true);
+                        $module = new Module($fileStream, false, true, 'res://' . str::replace($relativePath, '\\', '/'));
                         $module->dump($stream);
                         $stream->close();
                         $fileStream->close();
@@ -543,10 +552,10 @@ class PhpProjectBehaviour extends AbstractProjectBehaviour
                                 $className = str::replace($className, '/', '\\');
 
                                 try {
-                                    $done = $scope->execute(function () use ($stream, $compiled, $className, $log) {
+                                    $done = $scope->execute(function () use ($stream, $compiled, $className, $log, $name) {
                                         if (!class_exists($className, false)) {
                                             try {
-                                                $module = new Module($stream, false);
+                                                $module = new Module($stream, false, true, "res://$name");
                                                 $module->dump($compiled, true);
                                                 return true;
                                             } catch (Error $e) {

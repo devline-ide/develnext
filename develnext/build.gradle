@@ -33,12 +33,14 @@ dependencies {
 }
 
 def copyLegacyJfoenixRuntime = { destination ->
+    // Remove the adapter alias produced by earlier unanchored JFoenix rename rules.
+    delete "$destination/library/bundles/dn-jfoenix-bundle/jphp-gui-jfoenix.jar"
     copy {
         from configurations.legacyJfoenixRuntime
         into "$destination/library/bundles/dn-jfoenix-bundle"
         include 'jfoenix-*.jar', 'jphp-gui-jfoenix-ext-*.jar'
-        rename(/jfoenix-.*\.jar/, 'jfoenix.jar')
-        rename(/jphp-gui-jfoenix-ext-.*\.jar/, 'jphp-gui-jfoenix-ext.jar')
+        rename(/^jfoenix-.*\.jar$/, 'jfoenix.jar')
+        rename(/^jphp-gui-jfoenix-ext-.*\.jar$/, 'jphp-gui-jfoenix-ext.jar')
     }
 }
 
@@ -181,7 +183,7 @@ task prepareDist(dependsOn: ['installDist']) {
                 into "$project.buildDir/install/$project.name/tools/javafx/$platform"
             }
         }
-        fileTree("$project.buildDir/install/$project.name/lib").visit { FileVisitDetails el ->
+        fileTree("$project.buildDir/install/$project.name/lib") { exclude 'devline-bridge/**' }.visit { FileVisitDetails el ->
             def name = el.getName()
             name = name.replaceAll(/(-[0-9]+|\.[0-9]+|-SNAPSHOT)/, "");
 

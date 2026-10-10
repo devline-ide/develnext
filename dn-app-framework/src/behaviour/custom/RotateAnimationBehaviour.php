@@ -20,6 +20,14 @@ class RotateAnimationBehaviour extends AnimationBehaviour
      */
     public $negative = false;
 
+    protected $_rotationProgress = 0.0;
+
+    public function __clone()
+    {
+        parent::__clone();
+        $this->_rotationProgress = 0.0;
+    }
+
     /**
      * @param mixed $target
      */
@@ -30,10 +38,17 @@ class RotateAnimationBehaviour extends AnimationBehaviour
         }
 
         $this->timer(25, function (ScriptEvent $e) use ($target) {
+            if ($this->_rotationProgress == 0.0 && !$this->checkRepeatLimits()) {
+                $e->sender->stop();
+                return;
+            }
+
             $percent = ($e->sender->interval * 100 / $this->duration) / 100;
 
-            $step = 360 * $percent;
+            $step = min(360 - $this->_rotationProgress, 360 * $percent);
             $target->rotate += $this->negative ? -$step : $step;
+            $this->_rotationProgress += $step;
+            if ($this->_rotationProgress >= 360) $this->_rotationProgress = 0.0;
         });
     }
 

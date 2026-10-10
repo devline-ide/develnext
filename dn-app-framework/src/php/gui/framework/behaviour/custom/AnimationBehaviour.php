@@ -38,31 +38,42 @@ abstract class AnimationBehaviour extends AbstractBehaviour
      * @var UXAnimationTimer[]
      */
     protected $__animTimers = [];
+    private $_repeats = 0;
 
     public function apply($target)
     {
-        if ($this->delay > 0 && $this->when == 'ALWAYS') {
-            waitAsync($this->delay, function () use ($target) {
-                $this->__apply($target);
+        if ($this->_target) throw new \php\lang\IllegalStateException('This behaviour already used');
+        $types = $this->getWhenEventTypes();
+
+        if ($types) {
+            $this->prepareTrigger(false);
+
+            $this->bindEvent($target, $types[0], function () {
+                $this->updateTrigger(true);
             });
-        } else {
-            $types = $this->getWhenEventTypes();
 
-            if ($types) {
-                $this->enabled = false;
-
-                $target->on($types[0], function () {
-                    $this->enable();
-                }, get_class($this));
-
-                $target->on($types[1], function () {
-                    $this->disable();
-                    $this->restore();
-                }, get_class($this));
-            }
-
-            $this->__apply($target);
+            $this->bindEvent($target, $types[1], function () {
+                $this->updateTrigger(false);
+            });
         }
+
+        $this->__apply($target);
+    }
+
+    protected function applyImplOwned($target)
+    {
+        if ($this->delay > 0 && $this->when == 'ALWAYS') {
+            $this->later($this->delay, function () use ($target) {
+                try {
+                    BehaviourManager::guiLifecycle('check', $target, $this);
+                    $this->applyImpl($target);
+                    BehaviourManager::guiLifecycle('check', $target, $this);
+                } catch (\Throwable $failure) {
+                    try { $this->free(); } catch (\Throwable $cleanup) { }
+                    throw $failure;
+                }
+            });
+        } else $this->applyImpl($target);
     }
 
     public function __apply($target)
@@ -87,33 +98,45 @@ abstract class AnimationBehaviour extends AbstractBehaviour
      */
     protected function checkRepeatLimits()
     {
-        static $repeats = 0;
-
         if ($this->repeatCount == -1) return true;
 
-        if ($repeats >= $this->repeatCount) return false;
+        if ($this->_repeats >= $this->repeatCount) return false;
 
-        $repeats += 1;
+        $this->_repeats += 1;
 
         return true;
     }
 
     protected function animTimer(callable $func)
     {
-        $this->__animTimers[] = $timer = new UXAnimationTimer($func);
+        $generation = $this->_lifetimeGeneration;
+        $this->__animTimers[] = $timer = new UXAnimationTimer(function (...$arguments) use ($func, $generation) {
+            if ($this->_lifetimeReleased || $generation !== $this->_lifetimeGeneration) return true;
+            return call_user_func_array($func, $arguments);
+        });
         $timer->start();
         return $timer;
     }
 
     public function free()
     {
-        parent::free();
-
+        $failure = null;
+        try { parent::free(); }
+        catch (\Throwable $cause) { $failure = $cause; }
         foreach ($this->__animTimers as $timer) {
-            $timer->stop();
+            try { $timer->stop(); }
+            catch (\Throwable $cause) { if (!$failure) $failure = $cause; }
         }
 
         $this->__animTimers = [];
+        if ($failure) throw $failure;
+    }
+
+    public function __clone()
+    {
+        parent::__clone();
+        $this->__animTimers = [];
+        $this->_repeats = 0;
     }
 
     protected function restore()

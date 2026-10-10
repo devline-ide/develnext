@@ -77,23 +77,30 @@ class AbstractFactory
      */
     protected $loader;
 
+    private $_freed = false;
+
     /**
      * @param null|string $path
      */
     public function __construct($path = null)
     {
-        $this->loadPrototypes($path);
-
-        $this->loader = new UXLoader();
-        $this->eventBinder = new EventBinder(null, $this);
-        $this->behaviourManager = $behaviourManager = new FactoryBehaviourManager($this);
-
         try {
-            $name = Str::replace(get_class($this), '\\', '/');
+            $this->loadPrototypes($path);
 
-            BehaviourLoader::load("res://$name.behaviour", $behaviourManager);
-        } catch (IOException $e) {
-            ;
+            $this->loader = new UXLoader();
+            $this->eventBinder = new EventBinder(null, $this);
+            $this->behaviourManager = $behaviourManager = BehaviourManager::create($this, FactoryBehaviourManager::class);
+
+            try {
+                $name = Str::replace(get_class($this), '\\', '/');
+
+                BehaviourLoader::load("res://$name.behaviour", $behaviourManager);
+            } catch (IOException $e) {
+                ;
+            }
+        } catch (\Throwable $failure) {
+            try { $this->free(); } catch (\Throwable $cleanup) { }
+            throw $failure;
         }
     }
 
@@ -174,6 +181,7 @@ class AbstractFactory
      */
     public function create($id)
     {
+        if ($this->_freed) throw new IllegalArgumentException('Factory has been freed');
         if ($prototype = $this->prototypes[$id]) {
             $data = new UXData();
 
@@ -185,15 +193,23 @@ class AbstractFactory
 
             $node = $this->makeNode($id);
 
-            $node->data('-factory', $this);
-            $node->data('-factory-name', $this->factoryName);
-            $node->data('-factory-id', $factoryId = ($this->factoryName ? $this->factoryName . ".$id" : $id));
+            try {
+                $node->data('-factory', $this);
+                $node->data('-factory-name', $this->factoryName);
+                $node->data('-factory-id', $factoryId = ($this->factoryName ? $this->factoryName . ".$id" : $id));
 
-            UXNodeWrapper::get($node)->applyData($data);
+                UXNodeWrapper::get($node)->applyData($data);
 
-            $this->eventBinder->loadBind($node, $id, __CLASS__, true);
+                $this->eventBinder->loadBind($node, $id, __CLASS__, true);
 
-            $this->behaviourManager->applyForInstance($id, $node);
+                $this->behaviourManager->applyForInstance($id, $node);
+                if ($this->_freed) throw new IllegalArgumentException('Factory was freed during creation');
+            } catch (\Throwable $failure) {
+                try {
+                    if (method_exists($this->behaviourManager, 'releaseInstance')) $this->behaviourManager->releaseInstance($node);
+                } catch (\Throwable $cleanup) { }
+                throw $failure;
+            }
 
             $this->prototypeInstances[$id][] = $node;
 
@@ -201,6 +217,19 @@ class AbstractFactory
         }
 
         throw new IllegalArgumentException("Unable to find '$id' prototype in factory");
+    }
+
+    public function isFree() { return $this->_freed; }
+
+    public function free()
+    {
+        if ($this->_freed) return;
+        $this->_freed = true;
+        try {
+            if ($this->behaviourManager && method_exists($this->behaviourManager, 'releaseFactory')) $this->behaviourManager->releaseFactory($this);
+        } finally {
+            $this->prototypeInstances = [];
+        }
     }
 
     protected function getResourceName()

@@ -229,10 +229,11 @@ class Application
     /**
      * @param string $name
      */
-    public function __cleanCacheForm($name)
+    public function __cleanCacheForm($name, AbstractForm $form = null)
     {
-        unset($this->formCache[$name]);
-        unset($this->formOriginCache[$name]);
+        if (!$form || ($this->formCache[$name] ?? null) === $form) unset($this->formCache[$name]);
+        if (!$form || ($this->formOriginCache[$name] ?? null) === $form) unset($this->formOriginCache[$name]);
+        if ($form) unset($this->forms[spl_object_hash($form)]);
     }
 
     /**
@@ -338,6 +339,7 @@ class Application
         }
 
         $form = new $class($origin, $loadEvents, $loadBehaviours);
+        $this->forms[spl_object_hash($form)] = $form;
 
         if (!$cache) {
             return $form;
@@ -562,25 +564,25 @@ class Application
      */
     public function module($id)
     {
-        $module = $this->modules[$id];
-
-        if (!$module) {
-            $module = $this->modules["{$this->namespace}\\modules\\$id"];
+        $qualified = ltrim($id, '\\');
+        $class = "{$this->namespace}\\modules\\$qualified";
+        if ($this->appModule && (str::equalsIgnoreCase($qualified, get_class($this->appModule)) || str::equalsIgnoreCase($class, get_class($this->appModule)))) {
+            return $this->appModule;
         }
+        $module = $this->modules[$id] ?? $this->modules[$class] ?? null;
 
         if (!$module) {
-            if (class_exists($id)) {
-                return new $id();
+            foreach ($this->modules as $candidate) {
+                if (str::equalsIgnoreCase($qualified, get_class($candidate)) || str::equalsIgnoreCase($class, get_class($candidate))) return $candidate;
             }
-
-            $cls = "{$this->namespace}\\modules\\$id";
-            if (class_exists($cls)) {
-                return new $cls();
+            if (class_exists($qualified)) {
+                return new $qualified();
             }
-
+            if (class_exists($class)) {
+                return new $class();
+            }
             throw new Exception("Unable to find '$id' module");
         }
-
         return $module;
     }
 
@@ -675,11 +677,21 @@ class Application
      */
     public function shutdown()
     {
+        if ($this->shutdown) return;
         $this->shutdown = true;
 
         Logger::info("Application shutdown");
 
-        UXApplication::shutdown();
+        $failure = null;
+        $owned = array_merge(array_values($this->forms), [$this->appModule], array_values($this->modules), array_values($this->factories));
+        foreach ($owned as $target) {
+            if (!$target) continue;
+            try { $target->free(); } catch (\Throwable $error) { if (!$failure) $failure = $error; }
+        }
+        $this->forms = $this->formCache = $this->formOriginCache = $this->modules = $this->factories = [];
+        $this->appModule = $this->mainForm = $this->splash = null;
+        try { UXApplication::shutdown(); } catch (\Throwable $error) { if (!$failure) $failure = $error; }
+        if ($failure) throw $failure;
     }
 
     public function isShutdown()

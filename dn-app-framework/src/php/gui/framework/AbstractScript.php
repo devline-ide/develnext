@@ -23,6 +23,8 @@ abstract class AbstractScript
      * @var bool
      */
     private $applied = false;
+    private $freed = false;
+    private $freeing = false;
 
     /**
      * @hidden
@@ -73,6 +75,7 @@ abstract class AbstractScript
 
     public function apply($target)
     {
+        if ($this->freed) throw new IllegalArgumentException('Script has been freed');
         $this->_context = $target;
 
         if (!$this->disabled) {
@@ -137,7 +140,7 @@ abstract class AbstractScript
      */
     public function trigger($eventType, $args = [])
     {
-        if ($this->disabled) {
+        if ($this->disabled || $this->freed) {
             return null;
         }
 
@@ -163,12 +166,20 @@ abstract class AbstractScript
 
     public function on($event, callable $handler, $group = 'general')
     {
+        if ($this->freed) throw new IllegalArgumentException('Script has been freed');
         $this->handlers[$event][$group] = $handler;
     }
 
-    public function off($event)
+    public function off($event, $group = null)
     {
-        unset($this->handlers[$event]);
+        if ($group === null) {
+            unset($this->handlers[$event]);
+        } else {
+            unset($this->handlers[$event][$group]);
+            if (empty($this->handlers[$event])) {
+                unset($this->handlers[$event]);
+            }
+        }
     }
 
     public function __set($name, $value)
@@ -209,11 +220,17 @@ abstract class AbstractScript
 
     public function free()
     {
-        $this->disabled = true;
+        if ($this->freed || $this->freeing) return;
+        $this->freeing = true;
+        try {
+            if (class_exists(\php\gui\framework\behaviour\custom\BehaviourManager::class, false)) {
+                \php\gui\framework\behaviour\custom\BehaviourManager::releaseScript($this);
+            }
+        } finally { $this->freed = true; $this->disabled = true; $this->handlers = []; $this->freeing = false; }
     }
 
     public function isFree()
     {
-        return $this->disabled;
+        return $this->freed;
     }
 }

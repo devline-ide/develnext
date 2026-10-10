@@ -63,109 +63,134 @@ class GridMovementBehaviour extends AbstractBehaviour
      */
     protected $__busy = false;
 
+    protected $_keyboardManager;
+
     /**
      * @param mixed $target
      */
     protected function applyImpl($target)
     {
-        TimerScript::executeWhile(function () {
-            return $this->findForm();
-        }, function () use ($target) {
-            $form = $this->findForm();
+        $this->connectKeyboard($target);
+    }
 
-            if (!$form) {
+    protected function connectKeyboard($target)
+    {
+        if ($this->_lifetimeReleased) return;
+        $form = $this->findForm();
+
+        if (!$form) {
+            $this->later(100, function () use ($target) { $this->connectKeyboard($target); });
+            return;
+        }
+
+        $keyboardManager = $this->_keyboardManager = new UXKeyboardManager($form);
+
+        $pressHandler = function (UXKeyEvent $e) use ($target) {
+            if ($this->_lifetimeReleased || $target->isFree()) {
                 return;
             }
 
-            $keyboardManager = new UXKeyboardManager($form);
-
-            $pressHandler = function (UXKeyEvent $e) use ($target) {
-                if ($this->_target->isFree()) {
-                    return;
-                }
-
-                if (!$this->enabled) {
-                    return;
-                }
-
-                if ($this->__busy) {
-                    return;
-                }
-
-                $x = $y = 0;
-
-                list($up, $down, $left, $right) = ['Up', 'Down', 'Left', 'Right'];
-
-                if ($this->wasd) {
-                    list($up, $down, $left, $right) = ['W', 'S', 'A', 'D'];
-                }
-
-                switch ($e->codeName) {
-                    case $up:
-                        if (in_array($this->direction, ['ALL', 'UP_DOWN'])) {
-                            $y = -$this->tileHeight;
-
-                            if ($this->changeAngle) {
-                                $target->rotate = 90;
-                            }
-                        }
-
-                        break;
-
-                    case $down:
-                        if (in_array($this->direction, ['ALL', 'UP_DOWN'])) {
-                            $y = $this->tileHeight;
-
-                            if ($this->changeAngle) {
-                                $target->rotate = 270;
-                            }
-                        }
-
-                        break;
-
-                    case $right:
-                        if (in_array($this->direction, ['ALL', 'LEFT_RIGHT'])) {
-                            $x = $this->tileWidth;
-
-                            if ($this->changeAngle) {
-                                $target->rotate = 0;
-                            }
-                        }
-
-                        break;
-
-                    case $left:
-                        if (in_array($this->direction, ['ALL', 'LEFT_RIGHT'])) {
-                            $x = -$this->tileWidth;
-
-                            if ($this->changeAngle) {
-                                $target->rotate = 180;
-                            }
-                        }
-
-                        break;
-
-                    default:
-                        return;
-                }
-
-                $this->__busy = true;
-
-                if ($this->animated && ($x != 0 || $y != 0)) {
-                    $this->timer = Animation::displace($target, $this->speed, $x, $y, function () {
-                        $this->__busy = false;
-                    });
-                } else {
-                    $this->__busy = false;
-                    $target->x += $x;
-                    $target->y += $y;
-                }
-            };
-
-            foreach (['Up', 'Down', 'Left', 'Right', 'W', 'S', 'A', 'D'] as $key) {
-                $keyboardManager->onPress($key, $pressHandler, __CLASS__);
+            if (!$this->enabled) {
+                return;
             }
-        });
+
+            if ($this->__busy) {
+                return;
+            }
+
+            $x = $y = 0;
+
+            list($up, $down, $left, $right) = ['Up', 'Down', 'Left', 'Right'];
+
+            if ($this->wasd) {
+                list($up, $down, $left, $right) = ['W', 'S', 'A', 'D'];
+            }
+
+            switch ($e->codeName) {
+                case $up:
+                    if (in_array($this->direction, ['ALL', 'UP_DOWN'])) {
+                        $y = -$this->tileHeight;
+
+                        if ($this->changeAngle) {
+                            $target->rotate = 90;
+                        }
+                    }
+
+                    break;
+
+                case $down:
+                    if (in_array($this->direction, ['ALL', 'UP_DOWN'])) {
+                        $y = $this->tileHeight;
+
+                        if ($this->changeAngle) {
+                            $target->rotate = 270;
+                        }
+                    }
+
+                    break;
+
+                case $right:
+                    if (in_array($this->direction, ['ALL', 'LEFT_RIGHT'])) {
+                        $x = $this->tileWidth;
+
+                        if ($this->changeAngle) {
+                            $target->rotate = 0;
+                        }
+                    }
+
+                    break;
+
+                case $left:
+                    if (in_array($this->direction, ['ALL', 'LEFT_RIGHT'])) {
+                        $x = -$this->tileWidth;
+
+                        if ($this->changeAngle) {
+                            $target->rotate = 180;
+                        }
+                    }
+
+                    break;
+
+                default:
+                    return;
+            }
+
+            $this->__busy = true;
+
+            if ($this->animated && ($x != 0 || $y != 0)) {
+                $this->timer = $this->animate('displace', $target, $this->speed, $x, $y, function () {
+                    $this->__busy = false;
+                });
+            } else {
+                $this->__busy = false;
+                $target->x += $x;
+                $target->y += $y;
+            }
+        };
+
+        foreach (['Up', 'Down', 'Left', 'Right', 'W', 'S', 'A', 'D'] as $key) {
+            $keyboardManager->onPress($key, $pressHandler);
+        }
+    }
+
+    public function free()
+    {
+        $keyboard = $this->_keyboardManager;
+        $this->_keyboardManager = null;
+        $failure = null;
+        try { parent::free(); } catch (\Throwable $cause) { $failure = $cause; }
+        try { if ($keyboard) $keyboard->free(); }
+        catch (\Throwable $cause) { if (!$failure) $failure = $cause; }
+        $this->timer = null;
+        $this->__busy = false;
+        if ($failure) throw $failure;
+    }
+
+    public function __clone()
+    {
+        parent::__clone();
+        $this->_keyboardManager = $this->timer = null;
+        $this->__busy = false;
     }
 
     protected function findForm()

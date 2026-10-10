@@ -63,8 +63,9 @@ class ScriptComponentContainer
     /**
      * @return array
      */
-    public function getProperties()
+    public function getProperties($all = false)
     {
+        if ($all) return $this->data;
         $result = [];
 
         foreach ($this->type->getProperties() as $code => $prop) {

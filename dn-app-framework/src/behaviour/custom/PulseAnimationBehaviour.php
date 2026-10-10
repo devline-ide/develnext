@@ -27,6 +27,14 @@ class PulseAnimationBehaviour extends AnimationBehaviour
      */
     public $scale = 1.2;
 
+    protected $_instantOut = false;
+
+    public function __clone()
+    {
+        parent::__clone();
+        $this->_instantOut = false;
+    }
+
     /**
      * @param mixed $target
      */
@@ -39,15 +47,17 @@ class PulseAnimationBehaviour extends AnimationBehaviour
         if ($this->animated) {
             $this->_scaleInCallback();
         } else {
-            $this->timer($this->duration, function (ScriptEvent $e) use ($target) {
-                $e->sender->interval = $this->duration;
+            $this->accurateTimer($this->duration, function ($timer) use ($target) {
+                $timer->interval = $this->duration;
 
-                if ($this->enabled) {
-                    if ($target->scaleX > 1.0) {
+                if ($this->enabled || $this->_instantOut) {
+                    if (!$this->_instantOut && !$this->checkRepeatLimits()) return true;
+                    if ($this->_instantOut) {
                         $target->scaleX = $target->scaleY = 1.0;
                     } else {
                         $target->scaleX = $target->scaleY = $this->scale;
                     }
+                    $this->_instantOut = !$this->_instantOut;
                 }
             });
         }
@@ -55,7 +65,7 @@ class PulseAnimationBehaviour extends AnimationBehaviour
 
     protected function _scaleOutCallback()
     {
-        Animation::scaleTo($this->_target, $this->duration, 1.0, function () {
+        $this->animate('scaleTo', $this->_target, $this->duration, 1.0, function () {
             $this->_scaleInCallback();
         });
     }
@@ -63,12 +73,13 @@ class PulseAnimationBehaviour extends AnimationBehaviour
     protected function _scaleInCallback()
     {
         if ($this->enabled) {
-            Animation::scaleTo($this->_target, $this->duration, $this->scale, function () {
+            if (!$this->checkRepeatLimits()) return;
+            $this->animate('scaleTo', $this->_target, $this->duration, $this->scale, function () {
                 $this->_scaleOutCallback();
             });
         } else {
-            AccurateTimer::executeAfter($this->duration, function () {
-                $this->_scaleOutCallback();
+            $this->later($this->duration, function () {
+                $this->_scaleInCallback();
             });
         }
     }

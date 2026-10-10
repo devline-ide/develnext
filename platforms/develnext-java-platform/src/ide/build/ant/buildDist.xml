@@ -21,7 +21,7 @@
     <target name="jar" depends="init" description="generate the distribution">
         <mkdir dir="${dist}/lib"/>
 
-        <jar destfile="${dist}/lib/dn-compiled-module.jar" encoding="UTF-8" level="7">
+        <jar destfile="${dist}/lib/dn-compiled-module.jar" duplicate="preserve" encoding="UTF-8" level="7">
             #JAR_CONTENT#
         </jar>
     </target>

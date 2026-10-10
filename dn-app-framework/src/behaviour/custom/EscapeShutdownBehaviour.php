@@ -24,7 +24,7 @@ class EscapeShutdownBehaviour extends AbstractBehaviour
         $self = $this;
 
         if ($target instanceof UXNode) {
-            $target->on('keyUp', function (UXKeyEvent $e) use ($self, $target) {
+            $this->bindEvent($target, 'keyUp', function (UXKeyEvent $e) use ($self, $target) {
                 if ($this->_target->isFree()) {
                     return;
                 }
@@ -32,9 +32,9 @@ class EscapeShutdownBehaviour extends AbstractBehaviour
                 if ($self->enabled && $e->codeName == 'Esc' && $target->window) {
                     $target->window->hide();
                 }
-            }, __CLASS__);
+            });
         } elseif ($target instanceof UXForm)  {
-            $target->on('keyUp', function (UXKeyEvent $e) use ($self, $target) {
+            $this->bindEvent($target, 'keyUp', function (UXKeyEvent $e) use ($self, $target) {
                 if ($this->_target->isFree()) {
                     return;
                 }
@@ -44,7 +44,7 @@ class EscapeShutdownBehaviour extends AbstractBehaviour
                 if ($enabled && $e->codeName == 'Esc') {
                     $target->hide();
                 }
-            }, __CLASS__);
+            });
         }
     }
 

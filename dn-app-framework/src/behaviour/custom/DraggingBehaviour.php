@@ -53,32 +53,36 @@ class DraggingBehaviour extends AbstractBehaviour
     public $limitedByParent = false;
 
 
+    private $_dragPosition;
+    private $_dragOpacity;
+    private $_dragTransition;
+
     /**
      * @param mixed $target
      */
     protected function applyImpl($target)
     {
         if ($target instanceof UXNode) {
-            $pos = new SharedValue(null);
-
-            $target->on('mouseDown', function (UXMouseEvent $e) use ($pos) {
+            $this->bindEvent($target, 'mouseDown', function (UXMouseEvent $e) {
                 if ($this->enabled && $e->button == 'PRIMARY') {
+                    $this->finishDrag(false);
                     if ($this->opacityEnabled) {
+                        $this->_dragOpacity = $this->_target->opacity;
                         if ($this->animated) {
-                            Animation::fadeTo($this->_target, 300, $this->opacity);
+                            $this->_dragTransition = $this->animate('fadeTo', $this->_target, 300, $this->opacity);
                         } else {
                             $this->_target->opacity = $this->opacity;
                         }
                     }
 
-                    $pos->set([$e->screenX - $this->_target->x, $e->screenY - $this->_target->y]);
+                    $this->_dragPosition = [$e->screenX - $this->_target->x, $e->screenY - $this->_target->y];
                 }
-            }, __CLASS__);
+            });
 
-            $move = function (UXMouseEvent $e) use ($pos) {
-                if ($pos->get()) {
+            $move = function (UXMouseEvent $e) {
+                if ($this->enabled && $this->_dragPosition !== null) {
                     if (in_array($this->direction, ['ALL', 'LEFT_RIGHT'])) {
-                        $x = $e->screenX - $pos->get()[0];
+                        $x = $e->screenX - $this->_dragPosition[0];
 
                         if ($this->gridX > 1) {
                             $x = round($x / $this->gridX) * $this->gridX;
@@ -96,9 +100,9 @@ class DraggingBehaviour extends AbstractBehaviour
                     }
 
                     if (in_array($this->direction, ['ALL', 'UP_DOWN'])) {
-                        $y = $e->screenY - $pos->get()[1];
+                        $y = $e->screenY - $this->_dragPosition[1];
 
-                        if ($this->gridX > 1) {
+                        if ($this->gridY > 1) {
                             $y = round($y / $this->gridY) * $this->gridY;
                         }
 
@@ -116,22 +120,48 @@ class DraggingBehaviour extends AbstractBehaviour
                 }
             };
 
-            $target->on('mouseDrag', $move, __CLASS__);
+            $this->bindEvent($target, 'mouseDrag', $move);
 
-            $target->on('mouseUp', function (UXMouseEvent $e) use ($pos) {
-                if ($e->button == 'PRIMARY') {
-                    $pos->remove();
-
-                    if ($this->opacityEnabled) {
-                        if ($this->animated) {
-                            Animation::fadeTo($this->_target, 300, 1);
-                        } else {
-                            $this->_target->opacity = 1;
-                        }
-                    }
+            $this->bindEvent($target, 'mouseUp', function (UXMouseEvent $e) {
+                if ($e->button == 'PRIMARY' && $this->_dragPosition !== null) {
+                    $this->finishDrag($this->animated);
                 }
-            }, __CLASS__);
+            });
         }
+    }
+
+    private function finishDrag($animated)
+    {
+        $this->_dragPosition = null;
+        $this->cancelAnimation($this->_dragTransition);
+        $this->_dragTransition = null;
+        if ($this->_dragOpacity === null) return;
+        if ($animated) {
+            $this->_dragTransition = $this->animate('fadeTo', $this->_target, 300, $this->_dragOpacity, function () {
+                $this->_dragOpacity = $this->_dragTransition = null;
+            });
+        } else {
+            $this->_target->opacity = $this->_dragOpacity;
+            $this->_dragOpacity = null;
+        }
+    }
+
+    public function disable()
+    {
+        parent::disable();
+        $this->finishDrag(false);
+    }
+
+    public function free()
+    {
+        try { $this->finishDrag(false); }
+        finally { parent::free(); }
+    }
+
+    public function __clone()
+    {
+        parent::__clone();
+        $this->_dragPosition = $this->_dragOpacity = $this->_dragTransition = null;
     }
 
     public function getCode()

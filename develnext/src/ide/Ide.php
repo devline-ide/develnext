@@ -1271,6 +1271,10 @@ class Ide extends Application
     {
         $this->openedProject = $openedProject;
 
+        if (class_exists('devline\\legacy\\ProjectBehaviourSpec')) {
+            \devline\legacy\ProjectBehaviourSpec::register($openedProject);
+        }
+
         if ($openedProject) {
             $this->setTitle($openedProject->getName() . " - [" . $openedProject->getRootDir() . "]");
         } else {

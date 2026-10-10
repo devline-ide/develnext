@@ -53,6 +53,12 @@ class RandomMovementAnimationBehaviour extends AnimationBehaviour
      */
     protected $_busy;
 
+    public function __clone()
+    {
+        parent::__clone();
+        $this->_animTimer = $this->_currentDirection = $this->_busy = null;
+    }
+
     /**
      * @param mixed $target
      */
@@ -69,6 +75,7 @@ class RandomMovementAnimationBehaviour extends AnimationBehaviour
                 $timer->interval = $this->duration;
 
                 if ($this->enabled && !$busy->get()) {
+                    if (!$this->checkRepeatLimits()) return true;
                     list($x, $y) = $this->getNewRandomPosition();
 
                     if ($this->animated) {
@@ -78,14 +85,14 @@ class RandomMovementAnimationBehaviour extends AnimationBehaviour
                             $distance = UXGeometry::distance($target->x, $target->y, $x, $y);
                             $time = ($distance / 100) * $this->animationSpeed;
 
-                            $this->_animTimer = Animation::moveTo($target, $time, $x, $y, function () use ($busy) {
+                            $this->_animTimer = $this->animate('moveTo', $target, $time, $x, $y, function () use ($busy) {
                                 $busy->set(false);
                                 $this->_animTimer = null;
                             });
                         };
 
                         if ($this->delay) {
-                            waitAsync($this->delay, $func);
+                            $this->later($this->delay, $func);
                         } else {
                             $func();
                         }

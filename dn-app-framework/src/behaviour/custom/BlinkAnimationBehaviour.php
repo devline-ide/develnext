@@ -32,6 +32,14 @@ class BlinkAnimationBehaviour extends AnimationBehaviour
      */
     public $maxOpacity = 1.0;
 
+    protected $_instantOut = false;
+
+    public function __clone()
+    {
+        parent::__clone();
+        $this->_instantOut = false;
+    }
+
     /**
      * @param mixed $target
      */
@@ -44,21 +52,23 @@ class BlinkAnimationBehaviour extends AnimationBehaviour
         if ($this->animated) {
             $this->_fadeInCallback();
         } else {
-            $this->timer($this->duration, function (ScriptEvent $e) use ($target) {
-                $e->sender->interval = $this->duration;
+            $this->accurateTimer($this->duration, function ($timer) use ($target) {
+                $timer->interval = $this->duration;
 
-                if ($this->enabled || !$target->visible) {
+                if ($this->enabled || $this->_instantOut) {
+                    if (!$this->_instantOut && !$this->checkRepeatLimits()) return true;
                     if ($this->minOpacity <= 0.0000001) {
-                        $target->toggle();
+                        $target->visible = $this->_instantOut;
                     } else {
                         $target->visible = true;
 
-                        if ($target->opacity > $this->minOpacity) {
+                        if (!$this->_instantOut) {
                             $target->opacity = $this->minOpacity;
                         } else {
                             $target->opacity = $this->maxOpacity;
                         }
                     }
+                    $this->_instantOut = !$this->_instantOut;
                 }
             });
         }
@@ -66,7 +76,7 @@ class BlinkAnimationBehaviour extends AnimationBehaviour
 
     protected function _fadeOutCallback()
     {
-        Animation::fadeTo($this->_target, $this->duration, $this->maxOpacity, function () {
+        $this->animate('fadeTo', $this->_target, $this->duration, $this->maxOpacity, function () {
             $this->_fadeInCallback();
         });
     }
@@ -74,12 +84,13 @@ class BlinkAnimationBehaviour extends AnimationBehaviour
     protected function _fadeInCallback()
     {
         if ($this->enabled) {
-            Animation::fadeTo($this->_target, $this->duration, $this->minOpacity, function () {
+            if (!$this->checkRepeatLimits()) return;
+            $this->animate('fadeTo', $this->_target, $this->duration, $this->minOpacity, function () {
                 $this->_fadeOutCallback();
             });
         } else {
-            AccurateTimer::executeAfter($this->duration, function () {
-                $this->_fadeOutCallback();
+            $this->later($this->duration, function () {
+                $this->_fadeInCallback();
             });
         }
     }

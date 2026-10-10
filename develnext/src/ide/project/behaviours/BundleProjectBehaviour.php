@@ -768,7 +768,7 @@ class BundleProjectBehaviour extends AbstractProjectBehaviour
      */
     public function getSourceDirectories()
     {
-        return ['src_generated/', 'src'];
+        return $this->project->getSrcGeneratedDirectory() === null ? ['src'] : [$this->project->getSrcGeneratedDirectory() . '/', 'src'];
     }
 
     /**

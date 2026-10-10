@@ -13,6 +13,7 @@ use php\gui\UXNode;
 use php\gui\UXWindow;
 use php\lang\IllegalArgumentException;
 use php\lib\reflect;
+use php\time\Time;
 use script\TimerScript;
 use timer\AccurateTimer;
 
@@ -43,24 +44,26 @@ class Animation
             $done = function () use (&$cnt, $callback) {
                 $cnt--;
 
-                if ($cnt <= 0) {
+                if ($cnt <= 0 && $callback) {
                     $callback();
                 }
             };
 
-            $object->flow()->map(function () use ($object, $duration, $value, $done) {
-                Animation::fadeTo($object, $duration, $value, $done);
-            });
+            if (!$cnt && $callback) $callback();
+            foreach ($object->getInstances() as $instance) {
+                Animation::fadeTo($instance, $duration, $value, $done);
+            }
             return null;
         }
 
-        $diff = $value - $object->opacity;
+        $initial = $object->opacity;
+        $diff = $value - $initial;
+        $duration = max(0, (double) $duration) * 1000000;
+        $started = Time::nanos();
 
-        $steps = $duration / UXAnimationTimer::FRAME_INTERVAL_MS;
-        $step = $diff / $steps;
-
-        $timer = new UXAnimationTimer(function () use ($object, $step, $value, $callback, &$steps) {
-            $opacity = $object->opacity + $step;
+        $timer = new UXAnimationTimer(function () use ($object, $initial, $diff, $duration, $started, $value, $callback) {
+            $progress = $duration > 0 ? min(1, (Time::nanos() - $started) / $duration) : 1;
+            $opacity = $initial + $diff * $progress;
 
             if ($opacity > 1) {
                 $opacity = 1;
@@ -68,9 +71,7 @@ class Animation
 
             $object->opacity = $opacity < 0 ? 0 : $opacity;
 
-            $steps--;
-
-            if ($steps <= 0) {
+            if ($progress >= 1) {
                 $object->opacity = (double) $value;
 
                 if ($callback) {
@@ -103,13 +104,13 @@ class Animation
      * --RU--
      * Анимация масштабирования.
      *
-     * @param UXNode $object
+     * @param UXNode|Instances $object
      * @param int $duration
      * @param double $value
      * @param callable $callback
      * @return UXAnimationTimer
      */
-    static function scaleTo(UXNode $object, $duration, $value, callable $callback = null)
+    static function scaleTo($object, $duration, $value, callable $callback = null)
     {
         static::stopScale($object);
 
@@ -119,31 +120,30 @@ class Animation
             $done = function () use (&$cnt, $callback) {
                 $cnt--;
 
-                if ($cnt <= 0) {
+                if ($cnt <= 0 && $callback) {
                     $callback();
                 }
             };
 
-            $object->flow()->map(function () use ($object, $duration, $value, $done) {
-                Animation::scaleTo($object, $duration, $value, $done);
-            });
+            if (!$cnt && $callback) $callback();
+            foreach ($object->getInstances() as $instance) {
+                Animation::scaleTo($instance, $duration, $value, $done);
+            }
 
             return null;
         }
 
-        $diff = $value - $object->scaleX;
+        $initial = $object->scaleX;
+        $diff = $value - $initial;
+        $duration = max(0, (double) $duration) * 1000000;
+        $started = Time::nanos();
 
-        $steps = $duration / UXAnimationTimer::FRAME_INTERVAL_MS;
-        $step = $diff / $steps;
-        $steps = abs($steps);
-
-        $timer = new UXAnimationTimer(function () use ($object, $value, $step, &$steps, $callback) {
-            $object->scaleX += $step;
+        $timer = new UXAnimationTimer(function () use ($object, $value, $initial, $diff, $duration, $started, $callback) {
+            $progress = $duration > 0 ? min(1, (Time::nanos() - $started) / $duration) : 1;
+            $object->scaleX = $initial + $diff * $progress;
             $object->scaleY = $object->scaleX;
 
-            $steps--;
-
-            if ($steps <= 0) {
+            if ($progress >= 1) {
                 $object->scaleX = $object->scaleY = $value;
 
                 if ($callback) {
@@ -162,8 +162,12 @@ class Animation
         return $timer;
     }
 
-    static function stopScale(UXNode $object)
+    static function stopScale($object)
     {
+        if ($object instanceof Instances) {
+            foreach ($object->getInstances() as $instance) self::stopScale($instance);
+            return;
+        }
         $timer = $object->data(Animation::class . "#scaleTo");
 
         if ($timer instanceof UXAnimationTimer) {
@@ -172,10 +176,14 @@ class Animation
     }
 
     /**
-     * @param UXNode|UXWindow $object
+     * @param UXNode|UXWindow|Instances $object
      */
     static function stopMove($object)
     {
+        if ($object instanceof Instances) {
+            foreach ($object->getInstances() as $instance) self::stopMove($instance);
+            return;
+        }
         $timer = $object->data(Animation::class . "#moveTo");
 
         if ($timer instanceof UXAnimationTimer) {
@@ -188,7 +196,7 @@ class Animation
      * --RU--
      * Анимация смещения.
      *
-     * @param UXNode|UXWindow $object
+     * @param UXNode|UXWindow|Instances $object
      * @param int $duration
      * @param double $x
      * @param double $y
@@ -197,6 +205,19 @@ class Animation
      */
     static function displace($object, $duration, $x, $y, callable $callback = null)
     {
+        if ($object instanceof Instances) {
+            $cnt = sizeof($object);
+            $done = function () use (&$cnt, $callback) {
+                $cnt--;
+                if ($cnt <= 0 && $callback) $callback();
+            };
+            if (!$cnt && $callback) $callback();
+            $result = [];
+            foreach ($object->getInstances() as $instance) {
+                $result[] = self::displace($instance, $duration, $x, $y, $done);
+            }
+            return $result;
+        }
         return self::moveTo($object, $duration, $object->x + $x, $object->y + $y, $callback);
     }
 
@@ -205,7 +226,7 @@ class Animation
      * --RU--
      * Анимация перемещения к точке.
      *
-     * @param UXNode|UXWindow $object
+     * @param UXNode|UXWindow|Instances $object
      * @param int $duration
      * @param double $x
      * @param double $y
@@ -220,16 +241,17 @@ class Animation
             $done = function () use (&$cnt, $callback) {
                 $cnt--;
 
-                if ($cnt <= 0) {
+                if ($cnt <= 0 && $callback) {
                     $callback();
                 }
             };
 
             $result = [];
 
-            $object->flow()->map(function () use ($object, $duration, $x, $y, $done, &$result) {
-                $result[] = Animation::moveTo($object, $duration, $x, $y, $done);
-            });
+            if (!$cnt && $callback) $callback();
+            foreach ($object->getInstances() as $instance) {
+                $result[] = Animation::moveTo($instance, $duration, $x, $y, $done);
+            }
 
             return $result;
         }
@@ -245,22 +267,20 @@ class Animation
         }
 
         if ($object instanceof UXNode || $object instanceof UXWindow || $object instanceof PositionableBehaviour) {
-            $xOffset = $x - $object->x;
-            $yOffset = $y - $object->y;
+            $initialX = $object->x;
+            $initialY = $object->y;
+            $xOffset = $x - $initialX;
+            $yOffset = $y - $initialY;
+            $duration = max(0, (double) $duration) * 1000000;
+            $started = Time::nanos();
 
-            $steps = $duration / UXAnimationTimer::FRAME_INTERVAL_MS;
+            $timer = new UXAnimationTimer(function () use ($object, $initialX, $initialY, $xOffset, $yOffset, $duration, $started, $x, $y, $callback) {
+                $progress = $duration > 0 ? min(1, (Time::nanos() - $started) / $duration) : 1;
+                $object->x = $initialX + $xOffset * $progress;
+                $object->y = $initialY + $yOffset * $progress;
 
-            $xStep = $xOffset / $steps;
-            $yStep = $yOffset / $steps;
-
-            $timer = new UXAnimationTimer(function () use ($object, $xStep, $yStep, $x, $y, $callback, &$steps) {
-                $object->x += $xStep;
-                $object->y += $yStep;
-
-                $steps--;
-
-                if ($steps <= 0) {
-                    $object->position = [round($object->x), round($object->y)];
+                if ($progress >= 1) {
+                    $object->position = [$x, $y];
 
                     if ($callback) {
                         $object->data(Animation::class . "#moveTo", null);

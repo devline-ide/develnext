@@ -63,7 +63,8 @@ class RunBuildProjectBehaviour extends AbstractProjectBehaviour
             }
         }
 
-        $result[] = 'src_generated/';
+        $generated = $project ? $project->getSrcGeneratedDirectory() : 'src_generated';
+        if ($generated !== null) $result[] = $generated . '/';
         $result[] = 'src/';
 
         return $result;

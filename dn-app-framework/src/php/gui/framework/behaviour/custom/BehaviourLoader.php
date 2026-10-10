@@ -34,6 +34,11 @@ class BehaviourLoader
             foreach ($domTarget->findAll('./behaviour') as $domBehaviour) {
                 $type = $domBehaviour->getAttribute('type');
 
+                if (method_exists($manager, 'loadBehaviour') && ($behaviour = $manager->loadBehaviour($type, $domBehaviour->getAttributes()))) {
+                    $manager->apply($newTargetId === null ? $targetId : $newTargetId, $behaviour);
+                    continue;
+                }
+
                 if (class_exists($type)) {
                     $attributes = $domBehaviour->getAttributes();
                     unset($attributes['type']);
@@ -68,6 +73,11 @@ class BehaviourLoader
             /** @var DomElement $domBehaviour */
             foreach ($domTarget->findAll('./behaviour') as $domBehaviour) {
                 $type = $domBehaviour->getAttribute('type');
+
+                if (method_exists($manager, 'loadBehaviour') && ($behaviour = $manager->loadBehaviour($type, $domBehaviour->getAttributes()))) {
+                    $behaviours[] = [$targetId, $behaviour];
+                    continue;
+                }
 
                 if (class_exists($type)) {
                     $attributes = $domBehaviour->getAttributes();

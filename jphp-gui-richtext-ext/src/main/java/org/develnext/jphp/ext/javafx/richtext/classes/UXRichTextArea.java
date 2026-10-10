@@ -17,7 +17,6 @@ import java.util.Map;
 public class UXRichTextArea extends UXRegion<InlineCssTextArea> {
     interface WrappedInterface {
         @Property boolean useInitialStyleForInsertion();
-        @Property String text();
     }
 
     public UXRichTextArea(Environment env, InlineCssTextArea wrappedObject) {
@@ -31,6 +30,16 @@ public class UXRichTextArea extends UXRegion<InlineCssTextArea> {
     @Signature
     public void __construct() {
         __wrappedObject = new InlineCssTextArea();
+    }
+
+    @Getter
+    public String getText() {
+        return getWrappedObject().getText();
+    }
+
+    @Setter
+    public void setText(String text) {
+        getWrappedObject().replaceText(text);
     }
 
     @Getter

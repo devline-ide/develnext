@@ -76,7 +76,7 @@ class BehaviourCreateForm extends AbstractIdeForm
         $this->alreadyAddedBehaviours = [];
 
         foreach ($alreadyAddedBehaviours as $spec) {
-            $this->alreadyAddedBehaviours[get_class($spec)] = $spec;
+            $this->alreadyAddedBehaviours[$spec->getType()] = $spec;
         }
     }
 
@@ -93,7 +93,7 @@ class BehaviourCreateForm extends AbstractIdeForm
             $titleName->style = '-fx-font-weight: bold;';
             $titleName->padding = 0;
 
-            if ($this->alreadyAddedBehaviours[get_class($spec)]) {
+            if ($this->alreadyAddedBehaviours[$spec->getType()]) {
                 $titleName->style .= '-fx-text-fill: gray';
                 $titleName->text .= ' (уже добавлено)';
             }
@@ -241,7 +241,7 @@ class BehaviourCreateForm extends AbstractIdeForm
         $selected = Items::first($this->list->selectedItems);
 
         if ($selected) {
-            if ($this->alreadyAddedBehaviours[get_class($selected)]) {
+            if ($this->alreadyAddedBehaviours[$selected->getType()]) {
                 UXDialog::show('Данное поведение уже добавлено объекту');
                 return;
             }

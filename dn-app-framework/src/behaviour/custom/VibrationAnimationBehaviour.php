@@ -41,35 +41,40 @@ class VibrationAnimationBehaviour extends AnimationBehaviour
 
     public function _startAnimation()
     {
-        Animation::displace($this->_target, $this->duration, $this->offsetX, $this->offsetY, function () {
+        if (!$this->enabled) {
+            $this->later($this->duration, function () { $this->_startAnimation(); });
+            return;
+        }
+        if (!$this->checkRepeatLimits()) return;
+        $this->animate('displace', $this->_target, $this->duration, $this->offsetX, $this->offsetY, function () {
             $func = function () {
                 if ($this->enabled) {
                     $this->_reverseAnimation();
                 } else {
-                    AccurateTimer::executeAfter($this->duration, function () {
+                    $this->later($this->duration, function () {
                         $this->_reverseAnimation();
                     });
                 }
             };
 
-            AccurateTimer::executeAfter($this->delay, $func);
+            $this->later($this->delay, $func);
         });
     }
 
     public function _reverseAnimation()
     {
-        Animation::displace($this->_target, $this->duration, - $this->offsetX, - $this->offsetY, function () {
+        $this->animate('displace', $this->_target, $this->duration, - $this->offsetX, - $this->offsetY, function () {
             $func = function () {
                 if ($this->enabled) {
                     $this->_startAnimation();
                 } else {
-                    AccurateTimer::executeAfter($this->duration, function () {
+                    $this->later($this->duration, function () {
                         $this->_startAnimation();
                     });
                 }
             };
 
-            AccurateTimer::executeAfter($this->delay, $func);
+            $this->later($this->delay, $func);
         });
     }
 

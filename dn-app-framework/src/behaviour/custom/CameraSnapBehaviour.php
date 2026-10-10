@@ -68,7 +68,7 @@ class CameraSnapBehaviour extends AbstractBehaviour
                 $listener(null, $target->parent);
             }
 
-            $target->observer('parent')->addListener($listener);
+            $this->bindObserver($target, 'parent', $listener);
         }
     }
 

@@ -86,7 +86,7 @@ class GameEntityBehaviour extends AbstractBehaviour
         $type = $this->type = $target->data('-factory-id') ?: ($this->factoryName ? "{$this->factoryName}.{$target->id}" : $target->id);
 
         if ($target instanceof UXSpriteView) {
-            $target->observer('sprite')->addListener(function () {
+            $this->bindObserver($target, 'sprite', function () {
                 $this->__loadFixture();
             });
         }

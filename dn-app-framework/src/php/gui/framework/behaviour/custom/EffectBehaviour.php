@@ -31,21 +31,19 @@ abstract class EffectBehaviour extends AbstractBehaviour
 
     public function apply($target)
     {
+        if ($this->_target) throw new \php\lang\IllegalStateException('This behaviour already used');
         $types = $this->getWhenEventTypes();
 
         if ($types && $target instanceof UXNode) {
-            if (!$types[2]) {
-                $this->disable();
-            }
+            $this->prepareTrigger($types[2] ?? false);
 
-            $target->on($types[0], function () {
-                $this->enable();
-            }, get_class($this));
+            $this->bindEvent($target, $types[0], function () {
+                $this->updateTrigger(true);
+            });
 
-            $target->on($types[1], function () {
-                $this->disable();
-                $this->restore();
-            }, get_class($this));
+            $this->bindEvent($target, $types[1], function () {
+                $this->updateTrigger(false);
+            });
         }
 
         $this->__apply($target);
@@ -101,7 +99,7 @@ abstract class EffectBehaviour extends AbstractBehaviour
     {
         parent::disable();
 
-        if ($this->_target instanceof UXNode) {
+        if ($this->_effect && $this->_target instanceof UXNode) {
             $this->_target->effects->disable($this->_effect);
         }
     }
@@ -110,7 +108,7 @@ abstract class EffectBehaviour extends AbstractBehaviour
     {
         parent::enable();
 
-        if ($this->_target instanceof UXNode) {
+        if ($this->enabled && $this->_effect && $this->_target instanceof UXNode) {
             if (!$this->_target->effects->has($this->_effect)) {
                 $this->_target->effects->add($this->_effect);
             }
@@ -121,10 +119,11 @@ abstract class EffectBehaviour extends AbstractBehaviour
 
     public function free()
     {
-        parent::free();
-
-        if ($this->_target instanceof UXNode) {
-            $this->_target->effects->remove($this->_effect);
+        try { parent::free(); }
+        finally {
+            if ($this->_target instanceof UXNode && $this->_effect) {
+                $this->_target->effects->remove($this->_effect);
+            }
         }
     }
 

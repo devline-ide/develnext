@@ -24,6 +24,6 @@ class JPHPCoreBundle extends AbstractJarBundle
      */
     function getJarDependencies()
     {
-        return ['asm-all', 'jphp-core'];
+        return ['asm', 'asm-tree', 'asm-util', 'asm-analysis', 'jphp-core'];
     }
 }

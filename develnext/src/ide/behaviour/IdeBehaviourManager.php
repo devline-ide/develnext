@@ -146,6 +146,7 @@ class IdeBehaviourManager extends BehaviourManager
             /** @var AbstractBehaviour $copy */
             $copy = new $type();
             $copy->setProperties($behaviour->getProperties());
+            if (method_exists($copy, 'renameDesignerTarget')) $copy->renameDesignerTarget($targetId, $copyTargetId);
 
             $this->apply($copyTargetId, $copy);
         }
@@ -162,6 +163,9 @@ class IdeBehaviourManager extends BehaviourManager
     public function changeTargetId($oldId, $newId)
     {
         if ($this->behaviours["$oldId"]) {
+            foreach ($this->behaviours["$oldId"] as $behaviour) {
+                if (method_exists($behaviour, 'renameDesignerTarget')) $behaviour->renameDesignerTarget($oldId, $newId);
+            }
             $this->behaviours["$newId"] = $this->behaviours["$oldId"];
             unset($this->behaviours["$oldId"]);
 
@@ -169,11 +173,21 @@ class IdeBehaviourManager extends BehaviourManager
         }
     }
 
+    public function loadBehaviour($type, array $attributes)
+    {
+        return class_exists('devline\legacy\ProjectBehaviourSpec')
+            ? \devline\legacy\ProjectBehaviourSpec::loadBehaviour($type, $attributes) : null;
+    }
+
     public function load()
     {
         if (!$this->file) return true;
 
         $this->behaviours = [];
+
+        if (class_exists('devline\legacy\ProjectBehaviourSpec')) {
+            \devline\legacy\ProjectBehaviourSpec::prepare($this->file);
+        }
 
         return BehaviourLoader::load($this->file, $this);
     }
@@ -198,7 +212,7 @@ class IdeBehaviourManager extends BehaviourManager
 
                     $attributes = $behaviour->getProperties();
 
-                    if ($attributes['enabled']) {
+                    if ($attributes['enabled'] && !(method_exists($behaviour, 'preservesSerializedProperties') && $behaviour->preservesSerializedProperties())) {
                         unset($attributes['enabled']);
                     }
 
@@ -249,7 +263,7 @@ class IdeBehaviourManager extends BehaviourManager
 
                 $attributes = $behaviour->getProperties();
 
-                if ($attributes['enabled']) {
+                if ($attributes['enabled'] && !(method_exists($behaviour, 'preservesSerializedProperties') && $behaviour->preservesSerializedProperties())) {
                     unset($attributes['enabled']);
                 }
 
