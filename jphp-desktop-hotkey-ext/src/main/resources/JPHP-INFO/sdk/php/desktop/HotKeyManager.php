@@ -34,6 +34,11 @@ class HotKeyManager
     {
     }
 
+    /** Release native registrations and the provider thread. Safe to call repeatedly. */
+    public function close()
+    {
+    }
+
     /**
      * Stop all hotkeys.
      */

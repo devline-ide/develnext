@@ -606,12 +606,19 @@ abstract class AbstractForm extends UXForm
                 if ($node instanceof UXCustomNode) {
                     $newNode = $this->loadCustomNode($node);
 
-                    if ($newNode) {
-                        $node->parent->children->replace($node, $newNode);
+                    if ($newNode && $newNode != $node) {
+                        $children = $node->parent->children;
+                        $children->remove($newNode);
+                        $children->replace($node, $newNode);
                     }
                 }
             }
         });
+    }
+
+    protected function loadCustomNodesDuringDesign()
+    {
+        return true;
     }
 
     protected function loadDesign()
@@ -656,11 +663,13 @@ abstract class AbstractForm extends UXForm
                     }
                 });
 
-                foreach ($clones as $clone) {
+                foreach ($this->loadCustomNodesDuringDesign() ? $clones : [] as $clone) {
                     $newNode = $this->loadCustomNode($clone);
 
-                    if ($newNode) {
-                        $clone->parent->children->replace($clone, $newNode);
+                    if ($newNode && $newNode != $clone) {
+                        $children = $clone->parent->children;
+                        $children->remove($newNode);
+                        $children->replace($clone, $newNode);
                     }
                 }
 

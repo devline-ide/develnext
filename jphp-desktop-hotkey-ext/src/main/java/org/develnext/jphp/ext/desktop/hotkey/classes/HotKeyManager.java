@@ -79,12 +79,22 @@ public class HotKeyManager extends BaseObject {
 
     @Signature
     public void reset() {
-        provider.reset();
+        if (provider != null) {
+            provider.reset();
+        }
+    }
+
+    @Signature
+    public void close() {
+        if (provider != null) {
+            provider.close();
+            provider = null;
+        }
     }
 
     @Signature
     public void __destruct() {
-        provider.stop();
+        close();
     }
 
     static {

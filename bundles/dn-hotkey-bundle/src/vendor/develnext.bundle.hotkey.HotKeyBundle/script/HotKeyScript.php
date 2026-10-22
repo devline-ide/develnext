@@ -82,6 +82,9 @@ class HotKeyScript extends AbstractScript
     {
         parent::free();
 
-        $this->manager->reset();
+        if ($this->manager) {
+            $this->manager->close();
+            $this->manager = null;
+        }
     }
 }
