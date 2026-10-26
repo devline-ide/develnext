@@ -18,7 +18,7 @@ buildscript {
     ext {
         projectGroup = "org.develnext"
         projectVersion = '0.9.3' + (Boolean.getBoolean("release") ? "" : "-SNAPSHOT");
-        jphpVersion = "0.9.3-SNAPSHOT"
+        jphpVersion = "0.9.4-ozLTeam-SNAPSHOT"
         wizardVersion = "1.0.0-SNAPSHOT";
     }
 }
