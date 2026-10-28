@@ -63,6 +63,7 @@ abstract class AbstractScript
      * @var callable[]
      */
     private $handlers = [];
+    private $scriptData = [];
 
     /**
      * @param $name
@@ -111,16 +112,14 @@ abstract class AbstractScript
      */
     public function data(...$args)
     {
-        static $data = [];
-
         $sizeof = sizeof($args);
 
         if ($sizeof == 1) {
-            return $data[$args[0]];
+            return $this->scriptData[$args[0]];
         } elseif ($sizeof >= 2) {
-            $old = $data[$args[0]];
+            $old = $this->scriptData[$args[0]];
 
-            $data[$args[0]] = $args[1];
+            $this->scriptData[$args[0]] = $args[1];
             return $old;
         }
 
@@ -226,7 +225,7 @@ abstract class AbstractScript
             if (class_exists(\php\gui\framework\behaviour\custom\BehaviourManager::class, false)) {
                 \php\gui\framework\behaviour\custom\BehaviourManager::releaseScript($this);
             }
-        } finally { $this->freed = true; $this->disabled = true; $this->handlers = []; $this->freeing = false; }
+        } finally { $this->freed = true; $this->disabled = true; $this->handlers = []; $this->scriptData = []; $this->freeing = false; }
     }
 
     public function isFree()
